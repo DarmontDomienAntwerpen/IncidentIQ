@@ -998,7 +998,7 @@ with st.sidebar:
                 st.markdown(f"""
                 <div class="trace-step-{'done' if step['type'] == 'done' else 'user'}">
                     {icon} {step['label']}
-                    {f'<span style="color:#999;font-size:10px"> · {step.get(\"latency\",0):.1f}s</span>' if step.get('latency') else ''}
+                    {'' if not step.get('latency') else f'<span style="color:#999;font-size:10px"> · {round(step["latency"],1)}s</span>'}
                 </div>
                 """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
