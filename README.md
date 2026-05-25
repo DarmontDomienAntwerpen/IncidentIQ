@@ -2,7 +2,7 @@
 
 > AI-powered Incident Intelligence — Transform YouTube incident training videos into actionable knowledge.
 
-Built as the final project for the **Ironhack AI Engineer Bootcamp**.
+Built by Domien Darmont as the final project for the **Ironhack AI Engineer Bootcamp**.
 
 ---
 
