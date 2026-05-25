@@ -53,6 +53,7 @@ S = {
     "video_loaded": False,
     "video_title":  "",
     "video_url":    "",
+    "video_id":     "",
     "thread_id":    f"s_{uuid.uuid4().hex[:8]}",
     "pdf_path":     None,
     "pdf_data":     None,
@@ -165,13 +166,12 @@ def load_video(url):
     except Exception as e: return f"Cannot extract video ID: {e}"
     t0    = time.time()
     index = pc.Index("incidentiq")
-    stats = index.describe_index_stats()
-    if stats.total_vector_count > 0:
-        test = vs.similarity_search("incident", k=1)
-        if test:
-            S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
-            add_trace("fetch_youtube_transcript", f"video_id: {video_id} · pinecone_hit", lat=time.time()-t0)
-            return f"✓ Video already loaded from Pinecone cache — ready for questions!\n\nVideo ID: {video_id}"
+    # Check if THIS specific video is already in Pinecone
+    test = vs.similarity_search("incident", k=1, filter={"video_id": video_id})
+    if test:
+        S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
+        add_trace("fetch_youtube_transcript", f"video_id: {video_id} · pinecone_hit", lat=time.time()-t0)
+        return f"✓ Video already loaded from Pinecone cache — ready for questions!\n\nVideo ID: {video_id}"
     try:
         entries = YouTubeTranscriptApi().fetch(video_id, languages=["en","nl","fr"])
         txlist  = entries.snippets
@@ -184,6 +184,7 @@ def load_video(url):
     chunks = spl.create_documents(texts=[ts], metadatas=[{"video_id":video_id,"source":url}])
     vs.add_documents(chunks)
     S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
+    S["video_id"]=video_id
     add_trace("fetch_youtube_transcript", f"video_id: {video_id} · chunks: {len(chunks)}", lat=time.time()-t0)
     return f"✓ Video loaded and ready for questions!\n\nVideo ID: {video_id} · {len(chunks)} chunks stored in Pinecone."
 
@@ -295,7 +296,7 @@ def search_video_knowledge(query: str) -> str:
         qs.append(rw)
         all_docs = {}
         for q in qs:
-            for doc in vs.similarity_search(q, k=4):
+            for doc in vs.similarity_search(q, k=4, filter={"video_id": S["video_id"]}):
                 key = doc.page_content[:100]
                 if key not in all_docs: all_docs[key] = doc
         if not all_docs: return "No relevant information found."
@@ -313,7 +314,8 @@ def generate_xvr_scenario(language: str = "english") -> str:
     """Generate a complete XVR simulation scenario brief from the loaded incident video."""
     try:
         results = vs.similarity_search(
-            "location building fire cause complications decisions resources weather time casualties evacuation", k=12)
+            "location building fire cause complications decisions resources weather time casualties evacuation", k=12,
+            filter={"video_id": S["video_id"]})
         if not results: return "No video content found."
         context = "\n\n".join([re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",r.page_content) for r in results])
         return llm.invoke(
@@ -337,7 +339,8 @@ def generate_visual_summary(language: str = "english") -> str:
     """Generate structured JSON for visual timeline using Notification/Arrival/Problems/Solutions/End template."""
     try:
         results = vs.similarity_search(
-            "notification arrival cause complications problems actions solutions result casualties time", k=12)
+            "notification arrival cause complications problems actions solutions result casualties time", k=12,
+            filter={"video_id": S["video_id"]})
         if not results: return "No video content found."
         context = "\n\n".join([re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",r.page_content) for r in results])
         raw = re.sub(r'```json|```','', llm.invoke(
@@ -537,7 +540,8 @@ def handle_pdf():
     if not S["video_loaded"]:
         return "<div style='color:#aaa;padding:20px'>⚠️ Please load a video in the chat first.</div>", None, render_trace(False)
     t0 = time.time()
-    results = vs.similarity_search("key points lessons learned recommendations conclusions", k=12)
+    results = vs.similarity_search("key points lessons learned recommendations conclusions", k=12,
+        filter={"video_id": S["video_id"]})
     if not results:
         return "<div style='color:#aaa;padding:20px'>❌ No video data found in Pinecone.</div>", None, render_trace(False)
     context = "\n\n".join([r.page_content for r in results])
