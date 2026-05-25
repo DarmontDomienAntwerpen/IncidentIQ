@@ -1,6 +1,6 @@
 """
 IncidentIQ - AI-powered Incident Intelligence
-Gradio 6.14.0 + Python 3.11 — final version
+Gradio 6.14.0 + Python 3.11 — English only, final version
 """
 
 import os, re, json, time, base64, uuid
@@ -47,32 +47,6 @@ vs  = PineconeVectorStore(
     embedding=emb,
     pinecone_api_key=os.getenv("PINECONE_API_KEY"),
 )
-LANG_TOOL = {"Nederlands":"dutch", "English":"english", "Français":"french"}
-
-# ── Button labels per language ─────────────────────────────────────────────────
-BTN = {
-    "Nederlands": {
-        "pdf":  "📄  Genereer Key Concepts PDF",
-        "tl":   "📊  Genereer Visuele Tijdlijn",
-        "xvr":  "🎮  Genereer XVR Scenario",
-        "send": "📤  Versturen",
-        "doc_opts": ["📄 Key Concepts PDF","📊 Visuele tijdlijn","🎮 XVR Scenario"],
-    },
-    "English": {
-        "pdf":  "📄  Generate Key Concepts PDF",
-        "tl":   "📊  Generate Visual Timeline",
-        "xvr":  "🎮  Generate XVR Scenario",
-        "send": "📤  Send",
-        "doc_opts": ["📄 Key Concepts PDF","📊 Visual Timeline","🎮 XVR Scenario"],
-    },
-    "Français": {
-        "pdf":  "📄  Générer Concepts Clés PDF",
-        "tl":   "📊  Générer Chronologie Visuelle",
-        "xvr":  "🎮  Générer Scénario XVR",
-        "send": "📤  Envoyer",
-        "doc_opts": ["📄 Concepts Clés PDF","📊 Chronologie Visuelle","🎮 Scénario XVR"],
-    },
-}
 
 # ── State ──────────────────────────────────────────────────────────────────────
 S = {
@@ -89,6 +63,18 @@ S = {
     "total_cost":   0.0,
     "run_id":       "",
 }
+
+WELCOME = [{"role":"assistant","content":(
+    "👋 Welcome to **IncidentIQ** — AI-powered Incident Intelligence.\n\n"
+    "Here's what I can do for you:\n\n"
+    "• **Chat** — Ask any question about a loaded incident video\n"
+    "• **Key Concepts PDF** — Generate a branded cheatsheet with key points and recommendations\n"
+    "• **Visual Timeline** — Visualize the incident: Notification → Arrival → Problems → Solutions → End\n"
+    "• **XVR Scenario** — Generate a ready-to-use simulation scenario brief for XVR operators\n"
+    "• **Send** — Email any generated document to your team\n\n"
+    "To get started: **paste a YouTube URL** in the chat below.\n\n"
+    "*Domain-agnostic — built for fire services but adaptable to police, EMS, military or any organization that learns from video.*"
+)}]
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def vid_id(url):
@@ -111,15 +97,15 @@ def video_status_html():
         return (
             f"<div style='background:#0d1f14;border-radius:8px;padding:10px 12px;"
             f"border:1px solid #1D9E7533;margin:4px 0'>"
-            f"<div style='font-size:10px;color:#1D9E75;font-weight:500;margin-bottom:2px'>● Video geladen</div>"
+            f"<div style='font-size:10px;color:#1D9E75;font-weight:500;margin-bottom:2px'>● Video loaded</div>"
             f"<div style='font-size:11px;color:#aaa'>{S['video_title'][:40]}</div></div>"
         )
-    return "<div style='background:#1a1a1a;border-radius:8px;padding:10px 12px;border:1px solid #2a2a2a;margin:4px 0;font-size:11px;color:#555'>Geen video geladen</div>"
+    return "<div style='background:#1a1a1a;border-radius:8px;padding:10px 12px;border:1px solid #2a2a2a;margin:4px 0;font-size:11px;color:#555'>No video loaded</div>"
 
 def render_trace(pro):
     steps = S["trace"][-10:]
     if not steps:
-        return "<div style='color:#555;font-size:11px;text-align:center;padding:12px'>Nog geen activiteit...</div>"
+        return "<div style='color:#555;font-size:11px;text-align:center;padding:12px'>No activity yet...</div>"
     html = ""
     if pro and S["run_id"]:
         html += (
@@ -148,12 +134,12 @@ def render_trace(pro):
             )
         else:
             icons = {
-                "fetch_youtube_transcript": "Video laden",
-                "search_video_knowledge":   "Zoeken in de video",
-                "generate_xvr_scenario":    "XVR scenario maken",
-                "generate_visual_summary":  "Tijdlijn genereren",
-                "generate_pdf_cheatsheet":  "PDF aanmaken",
-                "send_gmail_tool":          "Versturen naar team",
+                "fetch_youtube_transcript": "Loading video",
+                "search_video_knowledge":   "Searching video",
+                "generate_xvr_scenario":    "Creating XVR scenario",
+                "generate_visual_summary":  "Generating timeline",
+                "generate_pdf_cheatsheet":  "Creating PDF",
+                "send_gmail_tool":          "Sending to team",
             }
             label = icons.get(step["label"], step["label"])
             lat   = f" · {step['lat']:.1f}s" if step.get("lat") else ""
@@ -174,13 +160,7 @@ def render_trace(pro):
     return html
 
 # ── YouTube ────────────────────────────────────────────────────────────────────
-def load_video(url, lang="Nederlands"):
-    msgs = {
-        "Nederlands": {"cached":"✓ Video was al geladen — Pinecone cache. Klaar!","loaded":"✓ Video geladen en klaar voor vragen!"},
-        "English":    {"cached":"✓ Already loaded — Pinecone cache. Ready!","loaded":"✓ Video loaded and ready!"},
-        "Français":   {"cached":"✓ Déjà chargée — cache Pinecone.","loaded":"✓ Vidéo chargée et prête!"},
-    }
-    m = msgs.get(lang, msgs["Nederlands"])
+def load_video(url):
     try: video_id = vid_id(url)
     except Exception as e: return f"Cannot extract video ID: {e}"
     t0    = time.time()
@@ -191,7 +171,7 @@ def load_video(url, lang="Nederlands"):
         if test:
             S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
             add_trace("fetch_youtube_transcript", f"video_id: {video_id} · pinecone_hit", lat=time.time()-t0)
-            return m["cached"] + f"\n\nVideo ID: {video_id}"
+            return f"✓ Video already loaded from Pinecone cache — ready for questions!\n\nVideo ID: {video_id}"
     try:
         entries = YouTubeTranscriptApi().fetch(video_id, languages=["en","nl","fr"])
         txlist  = entries.snippets
@@ -205,7 +185,7 @@ def load_video(url, lang="Nederlands"):
     vs.add_documents(chunks)
     S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
     add_trace("fetch_youtube_transcript", f"video_id: {video_id} · chunks: {len(chunks)}", lat=time.time()-t0)
-    return m["loaded"] + f"\n\nVideo ID: {video_id} · {len(chunks)} chunks."
+    return f"✓ Video loaded and ready for questions!\n\nVideo ID: {video_id} · {len(chunks)} chunks stored in Pinecone."
 
 # ── Key Concepts visual renderer ───────────────────────────────────────────────
 def render_key_concepts(data):
@@ -214,29 +194,23 @@ def render_key_concepts(data):
     kp       = data.get("keypoints",[])
     rec      = data.get("recommendations",[])
     tags     = data.get("tags",[])
-
     tags_html = "".join([
         f"<span style='font-size:10px;padding:2px 10px;border-radius:20px;background:#C0392B22;"
         f"color:#C0392B;border:1px solid #C0392B44;margin-right:5px'>{t}</span>"
         for t in tags
     ])
-
     kp_html = "".join([
         f"<div style='display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #2a2a2a'>"
         f"<div style='width:6px;height:6px;border-radius:50%;background:#C0392B;flex-shrink:0;margin-top:6px'></div>"
-        f"<div style='font-size:13px;color:#ddd;line-height:1.6'>{k}</div>"
-        f"</div>"
+        f"<div style='font-size:13px;color:#ddd;line-height:1.6'>{k}</div></div>"
         for k in kp
     ])
-
     rec_html = "".join([
         f"<div style='display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #2a2a2a'>"
         f"<div style='width:6px;height:6px;border-radius:50%;background:#1D9E75;flex-shrink:0;margin-top:6px'></div>"
-        f"<div style='font-size:13px;color:#ddd;line-height:1.6'>{r}</div>"
-        f"</div>"
+        f"<div style='font-size:13px;color:#ddd;line-height:1.6'>{r}</div></div>"
         for r in rec
     ])
-
     return (
         f"<div style='background:#161616;border-radius:12px;padding:20px 24px;border:1px solid #2a2a2a'>"
         f"<div style='background:linear-gradient(135deg,#1C2833,#2C3E50);padding:18px 20px;border-radius:10px;margin-bottom:20px'>"
@@ -244,20 +218,17 @@ def render_key_concepts(data):
         f"border-radius:4px;border:1px solid #C0392B44;display:inline-block;margin-bottom:10px;font-weight:500'>KEY CONCEPTS</div>"
         f"<div style='font-size:18px;font-weight:500;color:white;margin-bottom:4px'>{title}</div>"
         f"<div style='font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:10px'>{subtitle}</div>"
-        f"<div>{tags_html}</div>"
-        f"</div>"
+        f"<div>{tags_html}</div></div>"
         f"<div style='margin-bottom:20px'>"
         f"<div style='font-size:10px;letter-spacing:0.09em;color:#555;font-weight:500;margin-bottom:8px'>KEY POINTS</div>"
         f"{kp_html}</div>"
         f"<div style='background:#0d1f14;border-radius:8px;padding:10px 14px;margin-bottom:12px;border:1px solid #1D9E7533'>"
         f"<div style='font-size:10px;color:#1D9E75;font-weight:500;margin-bottom:2px'>AI analysis</div>"
-        f"<div style='font-size:10px;color:#555;font-style:italic'>Automatically extracted from video — not cited from a person.</div>"
-        f"</div>"
+        f"<div style='font-size:10px;color:#555;font-style:italic'>Automatically extracted from video — not cited from a person.</div></div>"
         f"<div style='font-size:10px;letter-spacing:0.09em;color:#555;font-weight:500;margin-bottom:8px'>AI-GENERATED RECOMMENDATIONS</div>"
         f"{rec_html}"
         f"<div style='margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a;font-size:10px;color:#555;font-family:monospace'>"
-        f"Generated by IncidentIQ AI · {datetime.now().strftime('%d/%m/%Y')}</div>"
-        f"</div>"
+        f"Generated by IncidentIQ AI · {datetime.now().strftime('%d/%m/%Y')}</div></div>"
     )
 
 # ── PDF ────────────────────────────────────────────────────────────────────────
@@ -312,7 +283,7 @@ def make_pdf(data, source_url=""):
 # ── Global tools ───────────────────────────────────────────────────────────────
 @tool
 def search_video_knowledge(query: str) -> str:
-    """Search Pinecone for information about the loaded video. Uses query rewriting and multi-query. Translates non-English queries."""
+    """Search Pinecone for information about the loaded video. Uses query rewriting and multi-query retrieval."""
     try:
         eq = llm.invoke(f"Translate to English, return only translation: {query}").content.strip()
         rw = llm.invoke(f"Rewrite for incident video search, max 20 words.\nQuery: {eq}\nRewritten:").content.strip()
@@ -338,16 +309,15 @@ def search_video_knowledge(query: str) -> str:
     except Exception as e: return f"Error: {e}"
 
 @tool
-def generate_xvr_scenario(language: str = "dutch") -> str:
+def generate_xvr_scenario(language: str = "english") -> str:
     """Generate a complete XVR simulation scenario brief from the loaded incident video."""
     try:
         results = vs.similarity_search(
             "location building fire cause complications decisions resources weather time casualties evacuation", k=12)
         if not results: return "No video content found."
         context = "\n\n".join([re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",r.page_content) for r in results])
-        lang = {"dutch":"Dutch - professional Belgian fire service terminology","english":"English","french":"French"}.get(language.lower(),"Dutch")
         return llm.invoke(
-            f"Generate a complete XVR operator scenario brief in {lang}.\n\n"
+            f"Generate a complete XVR operator scenario brief in English.\n\n"
             f"SCENARIO BRIEF - XVR SIMULATION\n================================\n\n"
             f"INCIDENT TITLE:\n[Short title]\n\n"
             f"LOCATION & BUILDING:\n- Building type: [type]\n- Floors: [number]\n- Construction: [materials]\n\n"
@@ -363,40 +333,39 @@ def generate_xvr_scenario(language: str = "dutch") -> str:
     except Exception as e: return f"Error: {e}"
 
 @tool
-def generate_visual_summary(language: str = "dutch") -> str:
-    """Generate structured JSON for visual timeline using Melding/Aankomst/Problemen/Oplossingen/Einde template."""
+def generate_visual_summary(language: str = "english") -> str:
+    """Generate structured JSON for visual timeline using Notification/Arrival/Problems/Solutions/End template."""
     try:
         results = vs.similarity_search(
-            "melding aankomst aanleiding oorzaak complicaties problemen acties oplossingen resultaat slachtoffers tijdstip", k=12)
+            "notification arrival cause complications problems actions solutions result casualties time", k=12)
         if not results: return "No video content found."
         context = "\n\n".join([re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",r.page_content) for r in results])
-        lang = {"dutch":"Dutch","english":"English","french":"French"}.get(language.lower(),"Dutch")
         raw = re.sub(r'```json|```','', llm.invoke(
-            f'Extract ONLY facts explicitly mentioned in the context. Return raw JSON in {lang}:\n'
+            f'Extract ONLY facts explicitly mentioned in the context. Return raw JSON in English:\n'
             f'{{"title":"[incident title from context]","subtitle":"[presenter/source from context]","duration":"[duration if mentioned, else unknown]",'
             f'"metrics":['
-            f'{{"value":"[real value from context]","unit":"[unit]","label":"[metric label in {lang}]","color":"blue"}},'
-            f'{{"value":"[real value from context]","unit":"[unit]","label":"[metric label in {lang}]","color":"amber"}},'
-            f'{{"value":"[real value from context]","unit":"[unit]","label":"[metric label in {lang}]","color":"red"}},'
-            f'{{"value":"[real value from context]","unit":"","label":"[metric label in {lang}]","color":"green"}}],'
+            f'{{"value":"[real value]","unit":"[unit]","label":"[metric label]","color":"blue"}},'
+            f'{{"value":"[real value]","unit":"[unit]","label":"[metric label]","color":"amber"}},'
+            f'{{"value":"[real value]","unit":"[unit]","label":"[metric label]","color":"red"}},'
+            f'{{"value":"[real value]","unit":"","label":"[metric label]","color":"green"}}],'
             f'"timeline":['
-            f'{{"timestamp":"[time from context or 00:00]","title":"Melding","text":"[wat was de melding, wanneer en door wie — uit context]","quote":"[directe quote als beschikbaar]","tags":["melding"],"color":"blue","badge":"Melding"}},'
-            f'{{"timestamp":"[time]","title":"Aankomst","text":"[situatie bij aankomst — uit context]","quote":"","tags":["aankomst"],"color":"amber","badge":"Aankomst"}},'
-            f'{{"timestamp":"[time]","title":"Problemen","text":"[complicaties en problemen tijdens interventie — uit context]","quote":"[directe quote als beschikbaar]","tags":["probleem"],"color":"red","badge":"Complicatie"}},'
-            f'{{"timestamp":"[time]","title":"Oplossingen","text":"[acties ondernomen en beslissingen — uit context]","quote":"","tags":["actie"],"color":"amber","badge":"Actie"}},'
-            f'{{"timestamp":"[time]","title":"Einde","text":"[resultaat van de interventie — uit context]","quote":"","tags":["resultaat"],"color":"green","badge":"Resultaat"}}],'
+            f'{{"timestamp":"[time or 00:00]","title":"Notification","text":"[what was reported, when and by whom]","quote":"[direct quote if available]","tags":["notification"],"color":"blue","badge":"Notification"}},'
+            f'{{"timestamp":"[time]","title":"Arrival","text":"[situation upon arrival]","quote":"","tags":["arrival"],"color":"amber","badge":"Arrival"}},'
+            f'{{"timestamp":"[time]","title":"Problems","text":"[complications during intervention]","quote":"[direct quote if available]","tags":["problem"],"color":"red","badge":"Complication"}},'
+            f'{{"timestamp":"[time]","title":"Solutions","text":"[actions taken and decisions made]","quote":"","tags":["action"],"color":"amber","badge":"Action"}},'
+            f'{{"timestamp":"[time]","title":"End","text":"[outcome of the intervention]","quote":"","tags":["outcome"],"color":"green","badge":"Outcome"}}],'
             f'"learnings":['
-            f'{{"number":"01","title":"[les 1 titel]","text":"[max 2 zinnen — uit context]"}},'
-            f'{{"number":"02","title":"[les 2 titel]","text":"[max 2 zinnen — uit context]"}},'
-            f'{{"number":"03","title":"[les 3 titel]","text":"[max 2 zinnen — uit context]"}},'
-            f'{{"number":"04","title":"[les 4 titel]","text":"[max 2 zinnen — uit context]"}}],'
+            f'{{"number":"01","title":"[learning 1 title]","text":"[max 2 sentences from context]"}},'
+            f'{{"number":"02","title":"[learning 2 title]","text":"[max 2 sentences from context]"}},'
+            f'{{"number":"03","title":"[learning 3 title]","text":"[max 2 sentences from context]"}},'
+            f'{{"number":"04","title":"[learning 4 title]","text":"[max 2 sentences from context]"}}],'
             f'"source_url":""}}\n\n'
-            f'STRIKTE REGELS:\n'
-            f'- Gebruik ALLEEN feiten uit de context hieronder\n'
-            f'- Verzin NOOIT tijdstempels, getallen of events\n'
-            f'- Gebruik exact deze 5 tijdlijn events: Melding, Aankomst, Problemen, Oplossingen, Einde\n'
-            f'- Als info niet in context staat: schrijf "Niet vermeld in de video"\n'
-            f'- Alle tekst in {lang}\n\n'
+            f'STRICT RULES:\n'
+            f'- Use ONLY facts from the context below\n'
+            f'- Never invent timestamps, numbers or events\n'
+            f'- Use exactly these 5 timeline events: Notification, Arrival, Problems, Solutions, End\n'
+            f'- If info is not in context: write "Not mentioned in the video"\n'
+            f'- All text in English\n\n'
             f'Context:\n{context}\n\nJSON:'
         ).content.strip()).strip()
         if "{" in raw and "}" in raw:
@@ -439,16 +408,21 @@ def send_gmail_tool(pdf_path: str = "", text_content: str = "", subject_suffix: 
             part.add_header("Content-Disposition",f"attachment; filename={Path(pdf_path).name}")
             msg.attach(part)
         svc.users().messages().send(userId="me",body={"raw":base64.urlsafe_b64encode(msg.as_bytes()).decode()}).execute()
-        return f"✓ Verstuurd naar: {', '.join(recipients)}"
+        return f"✓ Sent to: {', '.join(recipients)}"
     except Exception as e: return f"Error: {e}"
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 def build_agent():
     TOOLS  = [search_video_knowledge, generate_xvr_scenario, generate_visual_summary, send_gmail_tool]
-    PROMPT = """You are IncidentIQ, an AI agent for incident training.
+    PROMPT = """You are IncidentIQ, an AI agent for incident training and knowledge extraction.
+Sector-agnostic: fire services, police, EMS, civil protection or any training context.
 Video loading is handled separately — never ask user to load a video.
-ROUTING: Question->search_video_knowledge | XVR->generate_xvr_scenario | Visual->generate_visual_summary | Email->send_gmail_tool
-LANGUAGE: Always respond in EXACT same language as user. Dutch->Dutch. English->English. French->French.
+Always respond in English regardless of the user's language.
+ROUTING:
+- Question about video -> search_video_knowledge
+- XVR scenario -> generate_xvr_scenario
+- Visual/timeline -> generate_visual_summary
+- Email -> send_gmail_tool
 FORMAT: Bullet points, max 15 words per bullet."""
     lw = llm.bind_tools(TOOLS)
     def agent_node(state: MessagesState):
@@ -462,7 +436,7 @@ print("Building agent...")
 agent = build_agent()
 print("Agent ready!")
 
-def ask(message, language="Nederlands"):
+def ask(message):
     config = {"configurable":{"thread_id":S["thread_id"]}}
     t0=time.time(); final=""; calls=[]; rid=uuid.uuid4().hex[:8]; S["run_id"]=rid
     for event in agent.stream({"messages":[HumanMessage(content=message)]},config=config,stream_mode="values"):
@@ -473,13 +447,13 @@ def ask(message, language="Nederlands"):
             final=last.content.strip()
     lat=time.time()-t0; tok=max(len(message.split())*2,len(final.split())*2); cost=tok*0.00000015
     for tc in calls:
-        add_trace(tc, f"lang:{LANG_TOOL.get(language,'dutch')}", lat=lat/max(len(calls),1), tokens=tok//max(len(calls),1), cost=cost/max(len(calls),1))
+        add_trace(tc, "lang:english", lat=lat/max(len(calls),1), tokens=tok//max(len(calls),1), cost=cost/max(len(calls),1))
     return final, calls, lat
 
 # ── Timeline renderer ──────────────────────────────────────────────────────────
 def render_timeline(json_str):
     try: data = json.loads(json_str)
-    except: return "<div style='color:#aaa;padding:20px'>Geen tijdlijn data.</div>"
+    except: return "<div style='color:#aaa;padding:20px'>No timeline data available.</div>"
     CM = {
         "red":   ("#C0392B","#1a0d0d","#ff6b6b"),
         "amber": ("#E67E22","#1a1200","#ffa94d"),
@@ -506,7 +480,7 @@ def render_timeline(json_str):
                 f"<div style='font-size:11px;color:#777;margin-top:5px'>{m.get('label','')}</div></div>"
             )
         html += "</div>"
-    html += "<div style='font-size:10px;letter-spacing:0.09em;color:#555;font-weight:500;margin-bottom:12px'>INCIDENT TIJDLIJN</div>"
+    html += "<div style='font-size:10px;letter-spacing:0.09em;color:#555;font-weight:500;margin-bottom:12px'>INCIDENT TIMELINE</div>"
     for ev in data.get("timeline",[]):
         ch,bh,th = CM.get(ev.get("color","blue"),CM["blue"])
         qh  = (f"<div style='border-left:2px solid {ch};padding-left:10px;margin:8px 0;font-size:12px;color:#aaa;"
@@ -541,43 +515,35 @@ def render_timeline(json_str):
     return html
 
 # ── Handlers ───────────────────────────────────────────────────────────────────
-NO_VID = {
-    "Nederlands": "Hallo! Ik ben IncidentIQ.\n\nDrop een YouTube URL om te beginnen. Dan kan ik:\n• Vragen beantwoorden over het incident\n• Een professionele cheatsheet genereren\n• Een visuele tijdlijn maken\n• Een XVR simulatie scenario opstellen\n• Documenten versturen naar je team",
-    "English":    "Hello! I'm IncidentIQ.\n\nDrop a YouTube URL to get started. Then I can:\n• Answer questions about the incident\n• Generate a professional cheatsheet\n• Create a visual timeline\n• Build an XVR simulation scenario\n• Send documents to your team",
-    "Français":   "Bonjour! Je suis IncidentIQ.\n\nCollez une URL YouTube pour commencer:\n• Répondre aux questions\n• Générer une fiche de synthèse\n• Créer une chronologie visuelle\n• Construire un scénario XVR\n• Envoyer des documents",
-}
-
-def handle_chat(message, history, language):
+def handle_chat(message, history):
     if not message.strip(): return history, render_trace(False), video_status_html(), ""
     history = history or []
     is_url  = "youtube.com" in message or "youtu.be" in message
     if is_url:
-        response = load_video(message, language)
+        response = load_video(message)
         history.append({"role":"user","content":message})
         history.append({"role":"assistant","content":response})
         return history, render_trace(False), video_status_html(), ""
     if not S["video_loaded"]:
         history.append({"role":"user","content":message})
-        history.append({"role":"assistant","content":NO_VID.get(language,NO_VID["Nederlands"])})
+        history.append({"role":"assistant","content":"Please paste a YouTube URL first to load a video. Then I can answer your questions, generate reports and create XVR scenarios."})
         return history, render_trace(False), video_status_html(), ""
-    response, calls, lat = ask(message, language)
+    response, calls, lat = ask(message)
     history.append({"role":"user","content":message})
     history.append({"role":"assistant","content":response})
     return history, render_trace(False), video_status_html(), ""
 
-def handle_pdf(language):
+def handle_pdf():
     if not S["video_loaded"]:
-        return "<div style='color:#aaa;padding:20px'>⚠️ Laad eerst een video in de chat.</div>", None, render_trace(False)
-    lt = LANG_TOOL.get(language,"dutch")
+        return "<div style='color:#aaa;padding:20px'>⚠️ Please load a video in the chat first.</div>", None, render_trace(False)
     t0 = time.time()
-    lang = {"dutch":"Dutch","english":"English","french":"French"}.get(lt,"Dutch")
     results = vs.similarity_search("key points lessons learned recommendations conclusions", k=12)
     if not results:
-        return "<div style='color:#aaa;padding:20px'>❌ Geen video data gevonden.</div>", None, render_trace(False)
+        return "<div style='color:#aaa;padding:20px'>❌ No video data found in Pinecone.</div>", None, render_trace(False)
     context = "\n\n".join([r.page_content for r in results])
     try:
         raw = re.sub(r'```json|```','', llm.invoke(
-            f'Extract structured info for incident cheatsheet in {lang}.\n'
+            f'Extract structured info for incident cheatsheet in English.\n'
             f'Return ONLY JSON: {{"title":"...","subtitle":"...","tags":["tag1","tag2","tag3"],"keypoints":["..."],"recommendations":["..."]}}\n'
             f'Rules: max 15 words per item, no timestamps, 3-5 tags.\n\nContext:\n{context}\n\nJSON:'
         ).content.strip()).strip()
@@ -585,47 +551,45 @@ def handle_pdf(language):
         S["pdf_data"] = data
         fp = make_pdf(data, S.get("video_url",""))
         S["pdf_path"] = fp
-        add_trace("generate_pdf_cheatsheet", f"lang:{lt} · {data.get('title','')}", lat=time.time()-t0, tokens=500, cost=0.000075)
+        add_trace("generate_pdf_cheatsheet", f"title: {data.get('title','')}", lat=time.time()-t0, tokens=500, cost=0.000075)
         return render_key_concepts(data), fp, render_trace(False)
     except Exception as e:
         return f"<div style='color:#aaa;padding:20px'>❌ Error: {e}</div>", None, render_trace(False)
 
-def handle_timeline(language):
+def handle_timeline():
     if not S["video_loaded"]:
-        return "<div style='color:#aaa;padding:20px'>⚠️ Laad eerst een video in de chat.</div>", render_trace(False)
-    lt = LANG_TOOL.get(language,"dutch")
+        return "<div style='color:#aaa;padding:20px'>⚠️ Please load a video in the chat first.</div>", render_trace(False)
     t0 = time.time()
-    result  = generate_visual_summary.invoke({"language": lt})
+    result  = generate_visual_summary.invoke({"language": "english"})
     cleaned = result.strip()
     if "{" in cleaned and "}" in cleaned:
         cleaned = cleaned[cleaned.index("{"):cleaned.rindex("}")+1]
     try:
         json.loads(cleaned)
         S["visual_json"] = cleaned
-        add_trace("generate_visual_summary", f"lang:{lt}", lat=time.time()-t0, tokens=600, cost=0.00009)
+        add_trace("generate_visual_summary", "lang:english", lat=time.time()-t0, tokens=600, cost=0.00009)
         return render_timeline(cleaned), render_trace(False)
     except Exception as e:
         return f"<div style='color:#aaa;padding:20px'>❌ Error: {e}<br><br>{result[:300]}</div>", render_trace(False)
 
-def handle_xvr(language):
+def handle_xvr():
     if not S["video_loaded"]:
-        return "⚠️ Laad eerst een video in de chat.", None, render_trace(False)
-    lt     = LANG_TOOL.get(language,"dutch")
+        return "⚠️ Please load a video in the chat first.", None, render_trace(False)
     t0     = time.time()
-    result = generate_xvr_scenario.invoke({"language": lt})
+    result = generate_xvr_scenario.invoke({"language": "english"})
     if not result or len(result) < 50:
-        return f"❌ Lege response: {result}", None, render_trace(False)
+        return f"❌ Empty response: {result}", None, render_trace(False)
     S["xvr_content"] = result
-    add_trace("generate_xvr_scenario", f"lang:{lt}", lat=time.time()-t0, tokens=700, cost=0.000105)
+    add_trace("generate_xvr_scenario", "lang:english", lat=time.time()-t0, tokens=700, cost=0.000105)
     xvr_path = f'/tmp/xvr_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
     Path(xvr_path).write_text(result)
     return result, xvr_path, render_trace(False)
 
-def handle_send(email_to, doc_choice, language):
+def handle_send(email_to, doc_choice):
     if not email_to.strip():
-        return "⚠️ Vul een e-mailadres in.", render_trace(False)
+        return "⚠️ Please enter an email address.", render_trace(False)
     if not Path("credentials.json").exists():
-        return "⚠️ credentials.json niet gevonden. Zie README voor Gmail setup.", render_trace(False)
+        return "⚠️ credentials.json not found. See README for Gmail setup.", render_trace(False)
     t0 = time.time()
     try:
         if "PDF" in doc_choice and S["pdf_path"] and Path(S["pdf_path"]).exists():
@@ -633,22 +597,13 @@ def handle_send(email_to, doc_choice, language):
         elif "XVR" in doc_choice and S["xvr_content"]:
             result = send_gmail_tool.invoke({"text_content":S["xvr_content"],"subject_suffix":"XVR Scenario Brief","custom_emails":email_to})
         elif S["visual_json"]:
-            result = send_gmail_tool.invoke({"text_content":"Visual Summary bijgevoegd.","subject_suffix":"Visual Summary","custom_emails":email_to})
+            result = send_gmail_tool.invoke({"text_content":"Visual Summary attached.","subject_suffix":"Visual Summary","custom_emails":email_to})
         else:
-            return "⚠️ Genereer eerst een document via de tabs hierboven.", render_trace(False)
+            return "⚠️ Please generate a document first using the tabs above.", render_trace(False)
         add_trace("send_gmail_tool", f"to:{email_to}", lat=time.time()-t0)
         return result, render_trace(False)
     except Exception as e:
         return f"❌ Gmail error: {e}", render_trace(False)
-
-def update_buttons(lang):
-    b = BTN.get(lang, BTN["Nederlands"])
-    return (
-        gr.update(value=b["pdf"]),
-        gr.update(value=b["tl"]),
-        gr.update(value=b["xvr"]),
-        gr.update(value=b["send"]),
-    )
 
 # ── UI ─────────────────────────────────────────────────────────────────────────
 CSS = """
@@ -681,14 +636,16 @@ with gr.Blocks(title="IncidentIQ") as demo:
     with gr.Row():
         # SIDEBAR
         with gr.Column(scale=1, min_width=240):
-            language     = gr.Radio(["Nederlands","English","Français"], value="Nederlands", label="🌐 Taal")
             video_status = gr.HTML(video_status_html())
-            gr.HTML("<div style='font-size:10px;letter-spacing:0.08em;color:#444;font-weight:500;margin:10px 0 6px'>VERSTUREN</div>")
-            email_to    = gr.Textbox(placeholder="naam@email.be", label="Naar")
-            doc_choice  = gr.Dropdown(BTN["Nederlands"]["doc_opts"], value=BTN["Nederlands"]["doc_opts"][0], label="Document")
-            btn_send    = gr.Button(BTN["Nederlands"]["send"], variant="primary", size="sm")
+            gr.HTML("<div style='font-size:10px;letter-spacing:0.08em;color:#444;font-weight:500;margin:10px 0 6px'>SEND DOCUMENT</div>")
+            email_to   = gr.Textbox(placeholder="name@email.com", label="To")
+            doc_choice = gr.Dropdown(
+                ["📄 Key Concepts PDF","📊 Visual Timeline","🎮 XVR Scenario"],
+                value="📄 Key Concepts PDF", label="Document"
+            )
+            btn_send    = gr.Button("📤  Send", variant="primary", size="sm")
             send_result = gr.Markdown("")
-            gr.HTML("<div style='font-size:10px;letter-spacing:0.08em;color:#444;font-weight:500;margin:10px 0 6px'>AGENT ACTIVITEIT</div>")
+            gr.HTML("<div style='font-size:10px;letter-spacing:0.08em;color:#444;font-weight:500;margin:10px 0 6px'>AGENT ACTIVITY</div>")
             pro_toggle = gr.Checkbox(label="Pro mode", value=False)
             trace_html = gr.HTML(render_trace(False))
             if os.getenv("LANGSMITH_API_KEY"):
@@ -698,38 +655,36 @@ with gr.Blocks(title="IncidentIQ") as demo:
         with gr.Column(scale=3):
             with gr.Tabs():
                 with gr.Tab("💬  Chat"):
-                    chatbot = gr.Chatbot(value=[], height=480, label="Chat", autoscroll=True)
+                    chatbot = gr.Chatbot(value=WELCOME, height=480, label="Chat", autoscroll=True)
                     with gr.Row():
                         msg_input = gr.Textbox(
-                            placeholder="Stel een vraag of drop een YouTube URL...",
+                            placeholder="Ask a question or paste a YouTube URL...",
                             label="Input", lines=1, scale=10
                         )
                         send_chat = gr.Button("→", scale=1, variant="primary", size="sm")
 
                 with gr.Tab("📄  Key Concepts"):
-                    btn_pdf    = gr.Button(BTN["Nederlands"]["pdf"], variant="primary")
-                    kc_html    = gr.HTML("<div style='color:#777;text-align:center;padding:40px 20px'>Klik de knop hierboven om key concepts te genereren.</div>")
-                    pdf_file   = gr.File(label="Download PDF", visible=True)
+                    btn_pdf  = gr.Button("📄  Generate Key Concepts PDF", variant="primary")
+                    kc_html  = gr.HTML("<div style='color:#777;text-align:center;padding:40px 20px'>Click the button above to generate key concepts.</div>")
+                    pdf_file = gr.File(label="Download PDF", visible=True)
 
-                with gr.Tab("📊  Tijdlijn"):
-                    btn_tl        = gr.Button(BTN["Nederlands"]["tl"], variant="primary")
-                    timeline_html = gr.HTML("<div style='color:#777;text-align:center;padding:40px 20px'>Klik de knop hierboven om de tijdlijn te genereren.</div>")
+                with gr.Tab("📊  Timeline"):
+                    btn_tl        = gr.Button("📊  Generate Visual Timeline", variant="primary")
+                    timeline_html = gr.HTML("<div style='color:#777;text-align:center;padding:40px 20px'>Click the button above to generate the timeline.</div>")
 
                 with gr.Tab("🎮  XVR Scenario"):
-                    btn_xvr      = gr.Button(BTN["Nederlands"]["xvr"], variant="primary")
-                    xvr_output   = gr.Textbox(label="XVR Scenario Brief", lines=20, placeholder="Klik de knop hierboven.")
+                    btn_xvr      = gr.Button("🎮  Generate XVR Scenario", variant="primary")
+                    xvr_output   = gr.Textbox(label="XVR Scenario Brief", lines=20, placeholder="Click the button above to generate a scenario.")
                     xvr_download = gr.File(label="Download scenario", visible=True)
 
     # Events
-    msg_input.submit(handle_chat,  [msg_input,chatbot,language], [chatbot,trace_html,video_status,msg_input])
-    send_chat.click(handle_chat,   [msg_input,chatbot,language], [chatbot,trace_html,video_status,msg_input])
-    btn_pdf.click(handle_pdf,      [language], [kc_html,pdf_file,trace_html])
-    btn_tl.click(handle_timeline,  [language], [timeline_html,trace_html])
-    btn_xvr.click(handle_xvr,     [language], [xvr_output,xvr_download,trace_html])
-    btn_send.click(handle_send,    [email_to,doc_choice,language], [send_result,trace_html])
+    msg_input.submit(handle_chat,   [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
+    send_chat.click(handle_chat,    [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
+    btn_pdf.click(handle_pdf,       [], [kc_html,pdf_file,trace_html])
+    btn_tl.click(handle_timeline,   [], [timeline_html,trace_html])
+    btn_xvr.click(handle_xvr,      [], [xvr_output,xvr_download,trace_html])
+    btn_send.click(handle_send,     [email_to,doc_choice], [send_result,trace_html])
     pro_toggle.change(lambda p: render_trace(p), [pro_toggle], [trace_html])
-    language.change(update_buttons, [language], [btn_pdf,btn_tl,btn_xvr,btn_send])
-    demo.load(update_buttons, [language], [btn_pdf,btn_tl,btn_xvr,btn_send,doc_choice])
 
 if __name__ == "__main__":
     demo.launch(
