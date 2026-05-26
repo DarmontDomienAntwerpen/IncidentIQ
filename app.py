@@ -426,7 +426,7 @@ ROUTING:
 - XVR scenario -> generate_xvr_scenario
 - Visual/timeline -> generate_visual_summary
 - Email -> send_gmail_tool
-FORMAT: Bullet points, max 15 words per bullet."""
+FORMAT: Bullet points, max 15 words per bullet. Always end with a Sources line showing the timestamps from the context."""
     lw = llm.bind_tools(TOOLS)
     def agent_node(state: MessagesState):
         return {"messages":[lw.invoke([SystemMessage(content=PROMPT)]+state["messages"])]}
