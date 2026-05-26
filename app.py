@@ -169,7 +169,7 @@ def load_video(url):
     # Check if THIS specific video is already in Pinecone
     test = vs.similarity_search("incident", k=1, filter={"video_id": video_id})
     if test:
-        S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
+        S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url; S["video_id"]=video_id
         add_trace("fetch_youtube_transcript", f"video_id: {video_id} · pinecone_hit", lat=time.time()-t0)
         return f"✓ Video already loaded from Pinecone cache — ready for questions!\n\nVideo ID: {video_id}"
     try:
@@ -548,8 +548,8 @@ def handle_pdf():
     try:
         raw = re.sub(r'```json|```','', llm.invoke(
             f'Extract structured info for incident cheatsheet in English.\n'
-            f'Return ONLY JSON: {{"title":"...","subtitle":"...","tags":["tag1","tag2","tag3"],"keypoints":["..."],"recommendations":["..."]}}\n'
-            f'Rules: max 15 words per item, no timestamps, 3-5 tags.\n\nContext:\n{context}\n\nJSON:'
+            f'Return ONLY JSON: {{"title":"...","subtitle":"...","summary":"2-3 sentence overview of the incident and its main lessons","tags":["tag1","tag2","tag3"],"keypoints":["detailed point with context, max 25 words"],"recommendations":["concrete actionable recommendation, max 20 words"]}}\n'
+            f'Rules: 5-7 keypoints with real detail, 4-5 recommendations, 3-5 tags, no timestamps.\n\nContext:\n{context}\n\nJSON:'
         ).content.strip()).strip()
         data = json.loads(raw)
         S["pdf_data"] = data
