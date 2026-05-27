@@ -3,7 +3,9 @@ IncidentIQ - AI-powered Incident Intelligence
 Gradio 6.14.0 + Python 3.11 — English only, final version
 """
 
-import os, re, json, time, base64, uuid
+import os, re, json, time, base64, uuid, tempfile
+import numpy as np
+import scipy.io.wavfile as wavfile
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
@@ -426,7 +428,7 @@ ROUTING:
 - XVR scenario -> generate_xvr_scenario
 - Visual/timeline -> generate_visual_summary
 - Email -> send_gmail_tool
-FORMAT: Bullet points, max 15 words per bullet. Always end with a Sources line showing the timestamps from the context."""
+FORMAT: Bullet points, max 15 words per bullet."""
     lw = llm.bind_tools(TOOLS)
     def agent_node(state: MessagesState):
         return {"messages":[lw.invoke([SystemMessage(content=PROMPT)]+state["messages"])]}
@@ -434,6 +436,27 @@ FORMAT: Bullet points, max 15 words per bullet. Always end with a Sources line s
     b.add_node("agent",agent_node); b.add_node("tools",ToolNode(TOOLS))
     b.add_edge(START,"agent"); b.add_conditional_edges("agent",tools_condition); b.add_edge("tools","agent")
     return b.compile(checkpointer=MemorySaver())
+
+
+def transcribe_audio(audio):
+    """Transcribe audio using OpenAI Whisper."""
+    if audio is None:
+        return ""
+    try:
+        sr, data = audio
+        if data.dtype != np.int16:
+            data = (data * 32767).astype(np.int16)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            wavfile.write(f.name, sr, data)
+            tmp_path = f.name
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        with open(tmp_path, "rb") as af:
+            result = client.audio.transcriptions.create(model="whisper-1", file=af)
+        os.unlink(tmp_path)
+        return result.text.strip()
+    except Exception as e:
+        return f"Transcription error: {e}"
 
 print("Building agent...")
 agent = build_agent()
@@ -612,6 +635,8 @@ def handle_send(email_to, doc_choice):
 # ── UI ─────────────────────────────────────────────────────────────────────────
 CSS = """
 body { background: #0f0f0f !important; }
+button[aria-label="Opname starten"]::after, button[aria-label="Start recording"]::after { content: "🎤 Record" !important; font-size: 13px !important; }
+button[aria-label="Opname starten"], button[aria-label="Start recording"] { font-size: 0 !important; }
 .gradio-container { background: #0f0f0f !important; max-width: 100% !important; }
 footer { display: none !important; }
 """
@@ -666,6 +691,7 @@ with gr.Blocks(title="IncidentIQ") as demo:
                             label="Input", lines=1, scale=10
                         )
                         send_chat = gr.Button("→", scale=1, variant="primary", size="sm")
+                    audio_input = gr.Audio(sources=["microphone"], type="numpy", label="🎤  Speak your question", visible=True, interactive=)
 
                 with gr.Tab("📄  Key Concepts"):
                     btn_pdf  = gr.Button("📄  Generate Key Concepts PDF", variant="primary")
@@ -681,6 +707,12 @@ with gr.Blocks(title="IncidentIQ") as demo:
                     xvr_output   = gr.Textbox(label="XVR Scenario Brief", lines=20, placeholder="Click the button above to generate a scenario.")
                     xvr_download = gr.File(label="Download scenario", visible=True)
 
+    def handle_voice(audio, history):
+        transcript = transcribe_audio(audio)
+        if not transcript or transcript.startswith("Transcription error"):
+            return history, gr.update(value=None), transcript or ""
+        return handle_chat(transcript, history)[0], gr.update(value=None), transcript
+
     # Events
     msg_input.submit(handle_chat,   [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
     send_chat.click(handle_chat,    [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
@@ -689,6 +721,7 @@ with gr.Blocks(title="IncidentIQ") as demo:
     btn_xvr.click(handle_xvr,      [], [xvr_output,xvr_download,trace_html])
     btn_send.click(handle_send,     [email_to,doc_choice], [send_result,trace_html])
     pro_toggle.change(lambda p: render_trace(p), [pro_toggle], [trace_html])
+    audio_input.stop_recording(handle_voice, [audio_input, chatbot], [chatbot, audio_input, msg_input])
 
 if __name__ == "__main__":
     demo.launch(
