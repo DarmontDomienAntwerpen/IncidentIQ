@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IncidentIQ — AI Incident Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:     #C0392B;
+    --red-dim: rgba(192,57,43,0.12);
+    --red-bd:  rgba(192,57,43,0.3);
+    --green:   #1D9E75;
+    --grn-dim: rgba(29,158,117,0.12);
+    --grn-bd:  rgba(29,158,117,0.3);
+    --amber:   #E67E22;
+    --blue:    #4a9eff;
+    --bg:      #0a0a0a;
+    --surface: #111111;
+    --s2:      #181818;
+    --s3:      #1e1e1e;
+    --border:  #252525;
+    --text:    #e8e8e8;
+    --muted:   #888;
+    --subtle:  #444;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+
+  /* ── Layout ── */
+  .shell   { display: grid; grid-template-rows: 56px 1fr; height: 100vh; }
+  .content { display: grid; grid-template-columns: 260px 1fr; overflow: hidden; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: relative; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 32px; height: 32px; background: var(--red); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: #fff;
+    flex-shrink: 0;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px; }
+  .logo-sub  { font-size: 10px; color: var(--muted); font-weight: 300; }
+  .badges { display: flex; gap: 6px; }
+  .badge {
+    font-size: 10px; padding: 3px 9px; border-radius: 20px; font-family: 'DM Mono', monospace;
+    border: 1px solid; font-weight: 500;
+  }
+  .badge-red   { color: var(--red);   background: var(--red-dim);   border-color: var(--red-bd); }
+  .badge-blue  { color: var(--blue);  background: rgba(74,158,255,.1); border-color: rgba(74,158,255,.3); }
+  .badge-green { color: var(--green); background: var(--grn-dim);   border-color: var(--grn-bd); }
+
+  /* ── Sidebar ── */
+  aside {
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto; padding: 16px;
+    gap: 16px;
+  }
+  .video-pill {
+    background: var(--s2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .video-pill.loaded { background: #0d1f14; border-color: var(--grn-bd); }
+  .vp-label { font-size: 10px; font-weight: 500; color: var(--subtle); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+  .vp-label.on { color: var(--green); }
+  .vp-title { font-size: 12px; color: var(--muted); }
+
+  .sidebar-section { }
+  .sec-head {
+    font-size: 10px; font-weight: 500; color: var(--subtle); text-transform: uppercase;
+    letter-spacing: .09em; margin-bottom: 8px;
+  }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; }
+  input[type=email], select {
+    width: 100%; background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; color: var(--text); font-family: inherit;
+    outline: none; transition: border .15s;
+  }
+  input[type=email]:focus, select:focus { border-color: var(--red-bd); }
+  select option { background: var(--s2); }
+  .btn-primary {
+    width: 100%; padding: 9px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--red); color: #fff; font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .03em; transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: .85; }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .send-result { font-size: 11px; color: var(--green); margin-top: 6px; min-height: 16px; }
+  .send-result.err { color: var(--red); }
+
+  /* ── Trace ── */
+  .trace-list { display: flex; flex-direction: column; gap: 4px; }
+  .trace-item {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    background: #0d1f14; border: 1px solid var(--grn-bd); border-radius: 8px;
+    animation: fadeIn .3s ease;
+  }
+  .trace-check { color: var(--green); font-size: 12px; }
+  .trace-label { font-size: 11px; color: var(--text); flex: 1; }
+  .trace-lat   { font-size: 10px; color: var(--subtle); font-family: 'DM Mono', monospace; }
+  .trace-empty { font-size: 11px; color: var(--subtle); text-align: center; padding: 12px; }
+
+  /* ── Main ── */
+  main { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 2px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    padding: 14px 18px; font-size: 12px; font-weight: 500; color: var(--muted);
+    cursor: pointer; border: none; background: none; position: relative;
+    font-family: 'Syne', sans-serif; transition: color .15s;
+  }
+  .tab-btn::after {
+    content: ''; position: absolute; bottom: 0; left: 18px; right: 18px;
+    height: 2px; background: var(--red); border-radius: 2px 2px 0 0;
+    transform: scaleX(0); transition: transform .2s;
+  }
+  .tab-btn.active { color: var(--text); }
+  .tab-btn.active::after { transform: scaleX(1); }
+
+  /* ── Tab panels ── */
+  .panel { display: none; flex: 1; overflow-y: auto; padding: 20px; }
+  .panel.active { display: flex; flex-direction: column; }
+
+  /* ── Chat panel ── */
+  .chat-wrap { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  .chat-toolbar {
+    display: flex; justify-content: flex-end;
+  }
+  .btn-reset {
+    padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 11px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .btn-reset:hover { border-color: var(--red-bd); color: var(--red); }
+  .messages {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+    padding-right: 4px;
+  }
+  .msg { display: flex; gap: 10px; animation: fadeIn .25s ease; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;
+  }
+  .msg.assistant .msg-avatar { background: var(--red); color: #fff; }
+  .msg.user      .msg-avatar { background: var(--s3); color: var(--muted); }
+  .msg-bubble {
+    max-width: 72%; padding: 10px 14px; border-radius: 12px; font-size: 13px;
+    line-height: 1.65; white-space: pre-wrap;
+  }
+  .msg.assistant .msg-bubble { background: var(--s2); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 3px; }
+  .msg.user      .msg-bubble { background: var(--red); color: #fff; border-bottom-right-radius: 3px; }
+  .msg-typing .msg-bubble { background: var(--s2); border: 1px solid var(--border); }
+  .typing-dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin: 0 2px; animation: bounce .8s infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: .15s; }
+  .typing-dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-5px); } }
+
+  .chat-input-row {
+    display: flex; gap: 8px; align-items: flex-end; margin-top: 10px;
+  }
+  textarea {
+    flex: 1; background: var(--s2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; color: var(--text); font-family: inherit;
+    resize: none; outline: none; transition: border .15s; min-height: 42px; max-height: 120px;
+  }
+  textarea:focus { border-color: var(--red-bd); }
+  .btn-send {
+    padding: 10px 16px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--red); color: #fff; font-size: 16px; transition: opacity .15s;
+    flex-shrink: 0; height: 42px;
+  }
+  .btn-send:hover { opacity: .85; }
+  .btn-mic {
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--s2); color: var(--muted); font-size: 15px; cursor: pointer;
+    transition: all .15s; height: 42px; flex-shrink: 0;
+  }
+  .btn-mic.recording { background: var(--red-dim); border-color: var(--red-bd); color: var(--red); animation: pulse 1s infinite; }
+  .btn-mic:hover { border-color: var(--red-bd); color: var(--red); }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+  /* ── Section panels shared ── */
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .panel-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; }
+  .btn-gen {
+    padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--red); color: #fff; font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 600; transition: opacity .15s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-gen:hover   { opacity: .85; }
+  .btn-gen:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-dl {
+    padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 11px; cursor: pointer;
+    font-family: inherit; transition: all .15s; text-decoration: none; display: inline-block;
+  }
+  .btn-dl:hover { border-color: var(--grn-bd); color: var(--green); }
+  .placeholder-msg {
+    display: flex; align-items: center; justify-content: center;
+    height: 200px; color: var(--subtle); font-size: 13px;
+  }
+  .spinner {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+  /* ── Key Concepts ── */
+  .kc-card {
+    background: var(--s2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    animation: fadeIn .3s ease;
+  }
+  .kc-hero {
+    background: linear-gradient(135deg, #1C2833, #2C3E50); padding: 24px;
+  }
+  .kc-tag {
+    display: inline-block; font-size: 9px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 4px; background: var(--red-dim); color: var(--red);
+    border: 1px solid var(--red-bd); margin-bottom: 10px;
+  }
+  .kc-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .kc-sub   { font-size: 12px; color: rgba(255,255,255,.45); margin-bottom: 10px; }
+  .kc-tags  { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kc-chip  { font-size: 10px; padding: 2px 10px; border-radius: 20px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.5); }
+  .kc-body  { padding: 20px 24px; }
+  .kc-summary { font-size: 12px; color: var(--muted); line-height: 1.75; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+  .kc-sec-head { font-size: 10px; font-weight: 500; color: var(--subtle); text-transform: uppercase; letter-spacing: .09em; margin-bottom: 10px; }
+  .kc-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .kc-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .kc-dot.red   { background: var(--red); }
+  .kc-dot.green { background: var(--green); }
+  .kc-item-text { font-size: 13px; color: #ddd; line-height: 1.6; }
+  .kc-ai-note {
+    margin: 14px 0; padding: 10px 14px; background: var(--grn-dim); border-radius: 8px;
+    border: 1px solid var(--grn-bd); font-size: 11px; color: var(--green);
+  }
+  .kc-actions { display: flex; gap: 8px; margin-bottom: 18px; }
+
+  /* ── Timeline ── */
+  .tl-hero {
+    background: linear-gradient(135deg, #1C2833, #2C3E50); padding: 20px 24px;
+    border-radius: 12px; margin-bottom: 18px; animation: fadeIn .3s ease;
+  }
+  .tl-tag   { display: inline-block; font-size: 9px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; background: var(--red-dim); color: var(--red); border: 1px solid var(--red-bd); margin-bottom: 8px; }
+  .tl-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 600; }
+  .tl-sub   { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 3px; }
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .metric-card { background: var(--s2); border-radius: 10px; padding: 14px; border-bottom: 3px solid; }
+  .metric-val  { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; color: var(--text); }
+  .metric-unit { font-size: 12px; color: var(--muted); }
+  .metric-label{ font-size: 10px; color: var(--subtle); margin-top: 4px; }
+  .tl-events   { display: flex; flex-direction: column; gap: 0; margin-bottom: 20px; }
+  .tl-row      { display: flex; gap: 0; }
+  .tl-time     { width: 56px; flex-shrink: 0; padding-top: 14px; text-align: right; padding-right: 10px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--subtle); }
+  .tl-line-col { width: 22px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-top: 14px; }
+  .tl-dot      { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .tl-vert     { width: 1px; flex: 1; background: var(--border); min-height: 20px; }
+  .tl-card     { flex: 1; padding: 8px 0 18px 12px; }
+  .tl-card-inner { background: var(--s2); border-radius: 10px; padding: 14px; border-left: 3px solid; }
+  .tl-ev-title  { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
+  .tl-ev-badge  { font-size: 10px; font-weight: 400; margin-left: 6px; }
+  .tl-ev-text   { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .learnings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .learn-card { background: var(--s2); border-radius: 10px; padding: 14px; border: 1px solid var(--border); }
+  .learn-num  { font-size: 10px; color: var(--red); font-family: 'DM Mono', monospace; font-weight: 500; margin-bottom: 4px; }
+  .learn-title{ font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .learn-text { font-size: 11px; color: var(--subtle); line-height: 1.65; }
+  .sec-head-tl{ font-size: 10px; color: var(--subtle); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; margin: 16px 0 10px; }
+
+  /* ── XVR ── */
+  .xvr-output {
+    background: var(--s2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px; font-family: 'DM Mono', monospace; font-size: 12px;
+    color: #bbb; line-height: 1.8; white-space: pre-wrap; flex: 1; min-height: 300px;
+    animation: fadeIn .3s ease;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
+
+  /* ── Color helpers ── */
+  .c-red   { color: var(--red); }
+  .c-amber { color: var(--amber); }
+  .c-green { color: var(--green); }
+  .c-blue  { color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">IQ</div>
+      <div>
+        <div class="logo-text">IncidentIQ</div>
+        <div class="logo-sub">AI Incident Intelligence</div>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge badge-red">gpt-4o-mini</span>
+      <span class="badge badge-blue">Pinecone</span>
+      <span class="badge badge-green">LangGraph</span>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- Sidebar -->
+    <aside>
+      <!-- Video status -->
+      <div id="videoPill" class="video-pill">
+        <div id="vpLabel" class="vp-label">No video loaded</div>
+        <div id="vpTitle" class="vp-title">Paste a YouTube URL in chat</div>
+      </div>
+
+      <!-- Send -->
+      <div class="sidebar-section">
+        <div class="sec-head">Send Document</div>
+        <label>To</label>
+        <input type="email" id="emailTo" placeholder="name@email.com">
+        <br><br>
+        <label>Document</label>
+        <select id="docChoice">
+          <option value="PDF">📄 Key Concepts PDF</option>
+          <option value="Timeline">📊 Visual Timeline</option>
+          <option value="XVR">🎮 XVR Scenario</option>
+        </select>
+        <br><br>
+        <button class="btn-primary" id="btnSend" onclick="sendDoc()">📤 Send</button>
+        <div id="sendResult" class="send-result"></div>
+      </div>
+
+      <!-- Trace -->
+      <div class="sidebar-section" style="flex:1">
+        <div class="sec-head">Agent Activity</div>
+        <div id="traceList" class="trace-list">
+          <div class="trace-empty">No activity yet…</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('chat',this)">💬 Chat</button>
+        <button class="tab-btn" onclick="switchTab('keyconcepts',this)">📄 Key Concepts</button>
+        <button class="tab-btn" onclick="switchTab('timeline',this)">📊 Timeline</button>
+        <button class="tab-btn" onclick="switchTab('xvr',this)">🎮 XVR Scenario</button>
+      </div>
+
+      <!-- ── Chat ── -->
+      <div id="panel-chat" class="panel active">
+        <div class="chat-wrap">
+          <div class="chat-toolbar">
+            <button class="btn-reset" onclick="resetSession()">🔄 Reset / New video</button>
+          </div>
+          <div class="messages" id="messages">
+            <div class="msg assistant">
+              <div class="msg-avatar">IQ</div>
+              <div class="msg-bubble">👋 Welcome to <strong>IncidentIQ</strong>
+
+• Paste a YouTube URL to load a video
+• Ask any question about the incident
+• Use tabs above to generate reports
+
+⚠️ To load a <strong>new video</strong> — click 🔄 Reset first</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <textarea id="msgInput" rows="1" placeholder="Type a question or paste a YouTube URL…"
+              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            <button class="btn-mic" id="btnMic" onclick="toggleVoice()" title="Voice input">🎤</button>
+            <button class="btn-send" onclick="sendChat()">↑</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Key Concepts ── -->
+      <div id="panel-keyconcepts" class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Key Concepts</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <a id="btnDlPdf" class="btn-dl" href="/api/pdf/download" style="display:none">⬇ Download PDF</a>
+            <button class="btn-gen" id="btnGenPdf" onclick="generatePdf()">
+              <span>📄 Generate</span>
+            </button>
+          </div>
+        </div>
+        <div id="kcContent">
+          <div class="placeholder-msg">Load a video, then click Generate →</div>
+        </div>
+      </div>
+
+      <!-- ── Timeline ── -->
+      <div id="panel-timeline" class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Visual Timeline</div>
+          <button class="btn-gen" id="btnGenTl" onclick="generateTimeline()">
+            <span>📊 Generate</span>
+          </button>
+        </div>
+        <div id="tlContent">
+          <div class="placeholder-msg">Load a video, then click Generate →</div>
+        </div>
+      </div>
+
+      <!-- ── XVR ── -->
+      <div id="panel-xvr" class="panel">
+        <div class="panel-header">
+          <div class="panel-title">XVR Scenario Brief</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <a id="btnDlXvr" class="btn-dl" href="/api/xvr/download" style="display:none">⬇ Download .txt</a>
+            <button class="btn-gen" id="btnGenXvr" onclick="generateXvr()">
+              <span>🎮 Generate</span>
+            </button>
+          </div>
+        </div>
+        <div id="xvrContent">
+          <div class="placeholder-msg">Load a video, then click Generate →</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+/* ── Tab switching ─────────────────────────────────────────────── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ── Video status ──────────────────────────────────────────────── */
+function updateVideoStatus(loaded, title) {
+  const pill  = document.getElementById('videoPill');
+  const label = document.getElementById('vpLabel');
+  const vptitle = document.getElementById('vpTitle');
+  if (loaded) {
+    pill.classList.add('loaded');
+    label.textContent = '● Video loaded';
+    label.classList.add('on');
+    vptitle.textContent = (title || '').slice(0, 42);
+  } else {
+    pill.classList.remove('loaded');
+    label.textContent = 'No video loaded';
+    label.classList.remove('on');
+    vptitle.textContent = 'Paste a YouTube URL in chat';
+  }
+}
+
+/* ── Trace ─────────────────────────────────────────────────────── */
+const TRACE_LABELS = {
+  load_video: 'Loading video',
+  search:     'Searching video',
+  xvr:        'Creating XVR scenario',
+  timeline:   'Generating timeline',
+  pdf:        'Creating PDF',
+  send:       'Sending email',
+};
+function renderTrace(items) {
+  const el = document.getElementById('traceList');
+  if (!items || !items.length) {
+    el.innerHTML = '<div class="trace-empty">No activity yet…</div>';
+    return;
+  }
+  el.innerHTML = items.map(i => {
+    const lat = i.lat ? ` · ${i.lat.toFixed(1)}s` : '';
+    const label = TRACE_LABELS[i.label] || i.label;
+    return `<div class="trace-item">
+      <span class="trace-check">✓</span>
+      <span class="trace-label">${label}</span>
+      <span class="trace-lat">${lat}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ── Chat ──────────────────────────────────────────────────────── */
+let isTyping = false;
+let mediaRecorder = null;
+let audioChunks   = [];
+let isRecording   = false;
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function appendMsg(role, content) {
+  const msgs = document.getElementById('messages');
+  const div  = document.createElement('div');
+  div.className = `msg ${role}`;
+  const initials = role === 'assistant' ? 'IQ' : 'You';
+  div.innerHTML = `
+    <div class="msg-avatar">${initials}</div>
+    <div class="msg-bubble">${escHtml(content)}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function appendTyping() {
+  const msgs = document.getElementById('messages');
+  const div  = document.createElement('div');
+  div.className = 'msg assistant msg-typing';
+  div.id = 'typingIndicator';
+  div.innerHTML = `
+    <div class="msg-avatar">IQ</div>
+    <div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+}
+
+async function sendChat() {
+  const input = document.getElementById('msgInput');
+  const msg   = input.value.trim();
+  if (!msg || isTyping) return;
+  input.value = '';
+  input.style.height = 'auto';
+  isTyping = true;
+  appendMsg('user', msg);
+  appendTyping();
+  try {
+    const res  = await fetch('/api/chat', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({message: msg})
+    });
+    const data = await res.json();
+    removeTyping();
+    appendMsg('assistant', data.response || data.error || 'No response.');
+    updateVideoStatus(data.video_loaded, data.video_title);
+    renderTrace(data.trace);
+  } catch(e) {
+    removeTyping();
+    appendMsg('assistant', '❌ Network error: ' + e.message);
+  }
+  isTyping = false;
+}
+
+/* ── Voice input ────────────────────────────────────────────────── */
+async function toggleVoice() {
+  const btn = document.getElementById('btnMic');
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, {type: 'audio/wav'});
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const b64 = reader.result.split(',')[1];
+          btn.textContent = '⏳';
+          const res  = await fetch('/api/voice', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({audio_b64: b64})
+          });
+          const data = await res.json();
+          btn.textContent = '🎤';
+          btn.classList.remove('recording');
+          if (data.text) {
+            document.getElementById('msgInput').value = data.text;
+            autoResize(document.getElementById('msgInput'));
+          }
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      btn.classList.add('recording');
+      btn.textContent = '⏹';
+    } catch(e) {
+      alert('Microphone access denied.');
+    }
+  } else {
+    if (mediaRecorder) mediaRecorder.stop();
+    isRecording = false;
+  }
+}
+
+/* ── Reset ──────────────────────────────────────────────────────── */
+async function resetSession() {
+  await fetch('/api/reset', {method:'POST'});
+  document.getElementById('messages').innerHTML = `
+    <div class="msg assistant">
+      <div class="msg-avatar">IQ</div>
+      <div class="msg-bubble">🔄 Session reset. Paste a new YouTube URL to load a video.</div>
+    </div>`;
+  updateVideoStatus(false, '');
+  renderTrace([]);
+  document.getElementById('kcContent').innerHTML  = '<div class="placeholder-msg">Load a video, then click Generate →</div>';
+  document.getElementById('tlContent').innerHTML  = '<div class="placeholder-msg">Load a video, then click Generate →</div>';
+  document.getElementById('xvrContent').innerHTML = '<div class="placeholder-msg">Load a video, then click Generate →</div>';
+  document.getElementById('btnDlPdf').style.display  = 'none';
+  document.getElementById('btnDlXvr').style.display  = 'none';
+  document.getElementById('sendResult').textContent  = '';
+}
+
+/* ── Key Concepts ───────────────────────────────────────────────── */
+async function generatePdf() {
+  const btn = document.getElementById('btnGenPdf');
+  setBtnLoading(btn, true);
+  document.getElementById('kcContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Generating…</div>';
+  document.getElementById('btnDlPdf').style.display = 'none';
+  try {
+    const res  = await fetch('/api/pdf', {method:'POST'});
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('kcContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${data.error}</div>`;
+    } else {
+      renderKeyConceptsUI(data.data);
+      document.getElementById('btnDlPdf').style.display = 'inline-block';
+      renderTrace(data.trace);
+    }
+  } catch(e) {
+    document.getElementById('kcContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${e.message}</div>`;
+  }
+  setBtnLoading(btn, false);
+}
+
+function renderKeyConceptsUI(d) {
+  const tags = (d.tags||[]).map(t=>`<span class="kc-chip">${t}</span>`).join('');
+  const kps  = (d.keypoints||[]).map(k=>`
+    <div class="kc-item"><div class="kc-dot red"></div><div class="kc-item-text">${escHtml(k)}</div></div>`).join('');
+  const recs = (d.recommendations||[]).map(r=>`
+    <div class="kc-item"><div class="kc-dot green"></div><div class="kc-item-text">${escHtml(r)}</div></div>`).join('');
+  const summary = d.summary ? `<div class="kc-summary">${escHtml(d.summary)}</div>` : '';
+  document.getElementById('kcContent').innerHTML = `
+    <div class="kc-card">
+      <div class="kc-hero">
+        <div class="kc-tag">Key Concepts</div>
+        <div class="kc-title">${escHtml(d.title||'')}</div>
+        <div class="kc-sub">${escHtml(d.subtitle||'')}</div>
+        <div class="kc-tags">${tags}</div>
+      </div>
+      <div class="kc-body">
+        ${summary}
+        <div class="kc-sec-head">Key Points</div>
+        ${kps}
+        <div class="kc-ai-note">AI analysis — automatically extracted, not cited from a specific person</div>
+        <div class="kc-sec-head" style="margin-top:16px">Recommendations</div>
+        ${recs}
+      </div>
+    </div>`;
+}
+
+/* ── Timeline ────────────────────────────────────────────────────── */
+const CM = {
+  red:   {dot:'#C0392B', bdr:'#C0392B', badge:'#C0392B'},
+  amber: {dot:'#E67E22', bdr:'#E67E22', badge:'#E67E22'},
+  green: {dot:'#1D9E75', bdr:'#1D9E75', badge:'#1D9E75'},
+  blue:  {dot:'#4a9eff', bdr:'#4a9eff', badge:'#4a9eff'},
+};
+
+async function generateTimeline() {
+  const btn = document.getElementById('btnGenTl');
+  setBtnLoading(btn, true);
+  document.getElementById('tlContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Generating…</div>';
+  try {
+    const res  = await fetch('/api/timeline', {method:'POST'});
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('tlContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${data.error}</div>`;
+    } else {
+      renderTimelineUI(data.data);
+      renderTrace(data.trace);
+    }
+  } catch(e) {
+    document.getElementById('tlContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${e.message}</div>`;
+  }
+  setBtnLoading(btn, false);
+}
+
+function renderTimelineUI(d) {
+  const metrics = (d.metrics||[]).map(m => {
+    const c = (CM[m.color]||CM.blue).dot;
+    return `<div class="metric-card" style="border-color:${c}">
+      <div class="metric-val">${m.value||'–'}<span class="metric-unit"> ${m.unit||''}</span></div>
+      <div class="metric-label">${m.label||''}</div>
+    </div>`;
+  }).join('');
+
+  const events = (d.timeline||[]).map(ev => {
+    const c = (CM[ev.color]||CM.blue).dot;
+    return `<div class="tl-row">
+      <div class="tl-time">${ev.timestamp||''}</div>
+      <div class="tl-line-col">
+        <div class="tl-dot" style="background:${c}"></div>
+        <div class="tl-vert"></div>
+      </div>
+      <div class="tl-card">
+        <div class="tl-card-inner" style="border-color:${c}">
+          <div class="tl-ev-title">${escHtml(ev.title||'')} <span class="tl-ev-badge" style="color:${c}">${ev.badge||''}</span></div>
+          <div class="tl-ev-text">${escHtml(ev.text||'')}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const learnings = (d.learnings||[]).map(l => `
+    <div class="learn-card">
+      <div class="learn-num">${l.number||''}</div>
+      <div class="learn-title">${escHtml(l.title||'')}</div>
+      <div class="learn-text">${escHtml(l.text||'')}</div>
+    </div>`).join('');
+
+  document.getElementById('tlContent').innerHTML = `
+    <div class="tl-hero">
+      <div class="tl-tag">Incident Timeline</div>
+      <div class="tl-title">${escHtml(d.title||'')}</div>
+      <div class="tl-sub">${escHtml(d.subtitle||'')} · ${d.duration||''}</div>
+    </div>
+    <div class="metrics-row">${metrics}</div>
+    <div class="tl-events">${events}</div>
+    <div class="sec-head-tl">Key Learnings</div>
+    <div class="learnings-grid">${learnings}</div>`;
+}
+
+/* ── XVR ─────────────────────────────────────────────────────────── */
+async function generateXvr() {
+  const btn = document.getElementById('btnGenXvr');
+  setBtnLoading(btn, true);
+  document.getElementById('xvrContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Generating XVR scenario…</div>';
+  document.getElementById('btnDlXvr').style.display = 'none';
+  try {
+    const res  = await fetch('/api/xvr', {method:'POST'});
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('xvrContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${data.error}</div>`;
+    } else {
+      document.getElementById('xvrContent').innerHTML = `<pre class="xvr-output">${escHtml(data.content)}</pre>`;
+      document.getElementById('btnDlXvr').style.display = 'inline-block';
+      renderTrace(data.trace);
+    }
+  } catch(e) {
+    document.getElementById('xvrContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${e.message}</div>`;
+  }
+  setBtnLoading(btn, false);
+}
+
+/* ── Send ────────────────────────────────────────────────────────── */
+async function sendDoc() {
+  const emailTo   = document.getElementById('emailTo').value.trim();
+  const docChoice = document.getElementById('docChoice').value;
+  const resultEl  = document.getElementById('sendResult');
+  const btn       = document.getElementById('btnSend');
+  if (!emailTo) { resultEl.textContent = '⚠️ Enter an email address.'; resultEl.className='send-result err'; return; }
+  btn.disabled = true; resultEl.textContent = '⏳ Sending…'; resultEl.className='send-result';
+  try {
+    const res  = await fetch('/api/send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email_to: emailTo, doc_choice: docChoice})
+    });
+    const data = await res.json();
+    if (data.error) {
+      resultEl.textContent = '❌ ' + data.error; resultEl.className='send-result err';
+    } else {
+      resultEl.textContent = data.result; resultEl.className='send-result';
+      renderTrace(data.trace);
+    }
+  } catch(e) {
+    resultEl.textContent = '❌ ' + e.message; resultEl.className='send-result err';
+  }
+  btn.disabled = false;
+}
+
+/* ── Utility ─────────────────────────────────────────────────────── */
+function setBtnLoading(btn, loading) {
+  btn.disabled = loading;
+  if (loading) {
+    btn._origHTML = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span>';
+  } else {
+    btn.innerHTML = btn._origHTML || btn.innerHTML;
+  }
+}
+</script>
+</body>
+</html>
