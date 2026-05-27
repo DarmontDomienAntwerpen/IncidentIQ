@@ -69,14 +69,10 @@ S = {
 
 WELCOME = [{"role":"assistant","content":(
     "👋 Welcome to **IncidentIQ** — AI-powered Incident Intelligence.\n\n"
-    "Here's what I can do for you:\n\n"
-    "• **Chat** — Ask any question about a loaded incident video\n"
-    "• **Key Concepts PDF** — Generate a branded cheatsheet with key points and recommendations\n"
-    "• **Visual Timeline** — Visualize the incident: Notification → Arrival → Problems → Solutions → End\n"
-    "• **XVR Scenario** — Generate a ready-to-use simulation scenario brief for XVR operators\n"
-    "• **Send** — Email any generated document to your team\n\n"
-    "To get started: **paste a YouTube URL** in the chat below.\n\n"
-    "*Domain-agnostic — built for fire services but adaptable to police, EMS, military or any organization that learns from video.*"
+    "• **Type** a question or paste a YouTube URL below\n"
+    "• **Record** your question using the microphone button\n"
+    "• To analyse a **new video** — click **🔄 Reset** first, then paste the new URL\n\n"
+    "*Tabs above: Key Concepts PDF · Visual Timeline · XVR Scenario*"
 )}]
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -162,16 +158,34 @@ def render_trace(pro):
         )
     return html
 
+# ── Whisper STT ────────────────────────────────────────────────────────────────
+def transcribe_audio(audio):
+    if audio is None: return ""
+    try:
+        sr, data = audio
+        if data.dtype != np.int16:
+            data = (data * 32767).astype(np.int16)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            wavfile.write(f.name, sr, data)
+            tmp_path = f.name
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        with open(tmp_path, "rb") as af:
+            result = client.audio.transcriptions.create(model="whisper-1", file=af)
+        os.unlink(tmp_path)
+        return result.text.strip()
+    except Exception as e:
+        return f"Transcription error: {e}"
+
 # ── YouTube ────────────────────────────────────────────────────────────────────
 def load_video(url):
     try: video_id = vid_id(url)
     except Exception as e: return f"Cannot extract video ID: {e}"
-    t0    = time.time()
-    index = pc.Index("incidentiq")
-    # Check if THIS specific video is already in Pinecone
+    t0 = time.time()
     test = vs.similarity_search("incident", k=1, filter={"video_id": video_id})
     if test:
-        S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url; S["video_id"]=video_id
+        S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"
+        S["video_url"]=url; S["video_id"]=video_id
         add_trace("fetch_youtube_transcript", f"video_id: {video_id} · pinecone_hit", lat=time.time()-t0)
         return f"✓ Video already loaded from Pinecone cache — ready for questions!\n\nVideo ID: {video_id}"
     try:
@@ -180,13 +194,12 @@ def load_video(url):
     except NoTranscriptFound:   return f"No transcript found for {video_id}."
     except TranscriptsDisabled: return f"Transcripts disabled for {video_id}."
     except Exception as e:      return f"YouTube blocked. Wait 30-60 min.\nError: {e}"
-    plain  = clean_tx(" ".join(t.text for t in txlist))
     ts     = clean_tx(" ".join(f"[{int(t.start//60):02d}:{int(t.start%60):02d}] {t.text}" for t in txlist))
     spl    = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = spl.create_documents(texts=[ts], metadatas=[{"video_id":video_id,"source":url}])
     vs.add_documents(chunks)
-    S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"; S["video_url"]=url
-    S["video_id"]=video_id
+    S["video_loaded"]=True; S["video_title"]=f"Video {video_id}"
+    S["video_url"]=url; S["video_id"]=video_id
     add_trace("fetch_youtube_transcript", f"video_id: {video_id} · chunks: {len(chunks)}", lat=time.time()-t0)
     return f"✓ Video loaded and ready for questions!\n\nVideo ID: {video_id} · {len(chunks)} chunks stored in Pinecone."
 
@@ -197,6 +210,7 @@ def render_key_concepts(data):
     kp       = data.get("keypoints",[])
     rec      = data.get("recommendations",[])
     tags     = data.get("tags",[])
+    summary  = data.get("summary","")
     tags_html = "".join([
         f"<span style='font-size:10px;padding:2px 10px;border-radius:20px;background:#C0392B22;"
         f"color:#C0392B;border:1px solid #C0392B44;margin-right:5px'>{t}</span>"
@@ -214,6 +228,7 @@ def render_key_concepts(data):
         f"<div style='font-size:13px;color:#ddd;line-height:1.6'>{r}</div></div>"
         for r in rec
     ])
+    summary_html = f"<div style='font-size:12px;color:#aaa;line-height:1.7;padding:10px 0;border-bottom:1px solid #2a2a2a;margin-bottom:8px'>{summary}</div>" if summary else ""
     return (
         f"<div style='background:#161616;border-radius:12px;padding:20px 24px;border:1px solid #2a2a2a'>"
         f"<div style='background:linear-gradient(135deg,#1C2833,#2C3E50);padding:18px 20px;border-radius:10px;margin-bottom:20px'>"
@@ -222,6 +237,7 @@ def render_key_concepts(data):
         f"<div style='font-size:18px;font-weight:500;color:white;margin-bottom:4px'>{title}</div>"
         f"<div style='font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:10px'>{subtitle}</div>"
         f"<div>{tags_html}</div></div>"
+        f"{summary_html}"
         f"<div style='margin-bottom:20px'>"
         f"<div style='font-size:10px;letter-spacing:0.09em;color:#555;font-weight:500;margin-bottom:8px'>KEY POINTS</div>"
         f"{kp_html}</div>"
@@ -286,7 +302,7 @@ def make_pdf(data, source_url=""):
 # ── Global tools ───────────────────────────────────────────────────────────────
 @tool
 def search_video_knowledge(query: str) -> str:
-    """Search Pinecone for information about the loaded video. Uses query rewriting and multi-query retrieval."""
+    """Search Pinecone for information about the loaded video."""
     try:
         eq = llm.invoke(f"Translate to English, return only translation: {query}").content.strip()
         rw = llm.invoke(f"Rewrite for incident video search, max 20 words.\nQuery: {eq}\nRewritten:").content.strip()
@@ -316,61 +332,52 @@ def generate_xvr_scenario(language: str = "english") -> str:
     """Generate a complete XVR simulation scenario brief from the loaded incident video."""
     try:
         results = vs.similarity_search(
-            "location building fire cause complications decisions resources weather time casualties evacuation", k=12,
-            filter={"video_id": S["video_id"]})
+            "location building fire cause complications decisions resources weather time casualties evacuation",
+            k=12, filter={"video_id": S["video_id"]})
         if not results: return "No video content found."
         context = "\n\n".join([re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",r.page_content) for r in results])
         return llm.invoke(
             f"Generate a complete XVR operator scenario brief in English.\n\n"
             f"SCENARIO BRIEF - XVR SIMULATION\n================================\n\n"
-            f"INCIDENT TITLE:\n[Short title]\n\n"
-            f"LOCATION & BUILDING:\n- Building type: [type]\n- Floors: [number]\n- Construction: [materials]\n\n"
-            f"INITIAL SITUATION T+00:00:\n- Fire location: [exact]\n- Visibility: [smoke/flames]\n- Casualties: [number]\n- Resources: [vehicles]\n\n"
-            f"ENVIRONMENTAL CONDITIONS:\n- Time: [if mentioned]\n- Weather: [if mentioned]\n- Hazards: [materials]\n\n"
-            f"SCENARIO COMPLICATIONS:\n- T+[time]: [complication 1]\n- T+[time]: [complication 2]\n- T+[time]: [complication 3]\n- T+[time]: [complication 4]\n\n"
-            f"CRITICAL DECISION MOMENTS:\n1. [Decision]\n2. [Decision]\n3. [Decision]\n\n"
-            f"LEARNING OBJECTIVES:\n- [Objective 1]\n- [Objective 2]\n- [Objective 3]\n\n"
-            f"DEBRIEFING QUESTIONS:\n1. [Question based on actual mistakes]\n2. [Question]\n3. [Question]\n\n"
-            f"XVR OPERATOR NOTES:\n[Key moments to inject]\n\n"
+            f"INCIDENT TITLE:\n[Short title]\n\nLOCATION & BUILDING:\n- Building type: [type]\n- Floors: [number]\n\n"
+            f"INITIAL SITUATION T+00:00:\n- Fire location: [exact]\n- Casualties: [number]\n- Resources: [vehicles]\n\n"
+            f"SCENARIO COMPLICATIONS:\n- T+[time]: [complication 1]\n- T+[time]: [complication 2]\n\n"
+            f"CRITICAL DECISION MOMENTS:\n1. [Decision]\n2. [Decision]\n\n"
+            f"LEARNING OBJECTIVES:\n- [Objective 1]\n- [Objective 2]\n\n"
+            f"DEBRIEFING QUESTIONS:\n1. [Question]\n2. [Question]\n\n"
             f"STRICT RULES: Base ONLY on context. Never invent details.\n\nContext:\n{context}\n\nBrief:"
         ).content.strip()
     except Exception as e: return f"Error: {e}"
 
 @tool
 def generate_visual_summary(language: str = "english") -> str:
-    """Generate structured JSON for visual timeline using Notification/Arrival/Problems/Solutions/End template."""
+    """Generate structured JSON for visual timeline."""
     try:
         results = vs.similarity_search(
-            "notification arrival cause complications problems actions solutions result casualties time", k=12,
-            filter={"video_id": S["video_id"]})
+            "notification arrival cause complications problems actions solutions result casualties time",
+            k=12, filter={"video_id": S["video_id"]})
         if not results: return "No video content found."
         context = "\n\n".join([re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",r.page_content) for r in results])
         raw = re.sub(r'```json|```','', llm.invoke(
-            f'Extract ONLY facts explicitly mentioned in the context. Return raw JSON in English:\n'
-            f'{{"title":"[incident title from context]","subtitle":"[presenter/source from context]","duration":"[duration if mentioned, else unknown]",'
-            f'"metrics":['
-            f'{{"value":"[real value]","unit":"[unit]","label":"[metric label]","color":"blue"}},'
-            f'{{"value":"[real value]","unit":"[unit]","label":"[metric label]","color":"amber"}},'
-            f'{{"value":"[real value]","unit":"[unit]","label":"[metric label]","color":"red"}},'
-            f'{{"value":"[real value]","unit":"","label":"[metric label]","color":"green"}}],'
+            f'Extract ONLY facts from context. Return raw JSON in English:\n'
+            f'{{"title":"[title]","subtitle":"[source]","duration":"[duration or unknown]",'
+            f'"metrics":[{{"value":"[val]","unit":"[unit]","label":"[label]","color":"blue"}},'
+            f'{{"value":"[val]","unit":"[unit]","label":"[label]","color":"amber"}},'
+            f'{{"value":"[val]","unit":"[unit]","label":"[label]","color":"red"}},'
+            f'{{"value":"[val]","unit":"","label":"[label]","color":"green"}}],'
             f'"timeline":['
-            f'{{"timestamp":"[time or 00:00]","title":"Notification","text":"[what was reported, when and by whom]","quote":"[direct quote if available]","tags":["notification"],"color":"blue","badge":"Notification"}},'
-            f'{{"timestamp":"[time]","title":"Arrival","text":"[situation upon arrival]","quote":"","tags":["arrival"],"color":"amber","badge":"Arrival"}},'
-            f'{{"timestamp":"[time]","title":"Problems","text":"[complications during intervention]","quote":"[direct quote if available]","tags":["problem"],"color":"red","badge":"Complication"}},'
-            f'{{"timestamp":"[time]","title":"Solutions","text":"[actions taken and decisions made]","quote":"","tags":["action"],"color":"amber","badge":"Action"}},'
-            f'{{"timestamp":"[time]","title":"End","text":"[outcome of the intervention]","quote":"","tags":["outcome"],"color":"green","badge":"Outcome"}}],'
+            f'{{"timestamp":"[time]","title":"Notification","text":"[what was reported]","quote":"","tags":["notification"],"color":"blue","badge":"Notification"}},'
+            f'{{"timestamp":"[time]","title":"Arrival","text":"[situation on arrival]","quote":"","tags":["arrival"],"color":"amber","badge":"Arrival"}},'
+            f'{{"timestamp":"[time]","title":"Problems","text":"[complications]","quote":"","tags":["problem"],"color":"red","badge":"Complication"}},'
+            f'{{"timestamp":"[time]","title":"Solutions","text":"[actions taken]","quote":"","tags":["action"],"color":"amber","badge":"Action"}},'
+            f'{{"timestamp":"[time]","title":"End","text":"[outcome]","quote":"","tags":["outcome"],"color":"green","badge":"Outcome"}}],'
             f'"learnings":['
-            f'{{"number":"01","title":"[learning 1 title]","text":"[max 2 sentences from context]"}},'
-            f'{{"number":"02","title":"[learning 2 title]","text":"[max 2 sentences from context]"}},'
-            f'{{"number":"03","title":"[learning 3 title]","text":"[max 2 sentences from context]"}},'
-            f'{{"number":"04","title":"[learning 4 title]","text":"[max 2 sentences from context]"}}],'
+            f'{{"number":"01","title":"[title]","text":"[max 2 sentences]"}},'
+            f'{{"number":"02","title":"[title]","text":"[max 2 sentences]"}},'
+            f'{{"number":"03","title":"[title]","text":"[max 2 sentences]"}},'
+            f'{{"number":"04","title":"[title]","text":"[max 2 sentences]"}}],'
             f'"source_url":""}}\n\n'
-            f'STRICT RULES:\n'
-            f'- Use ONLY facts from the context below\n'
-            f'- Never invent timestamps, numbers or events\n'
-            f'- Use exactly these 5 timeline events: Notification, Arrival, Problems, Solutions, End\n'
-            f'- If info is not in context: write "Not mentioned in the video"\n'
-            f'- All text in English\n\n'
+            f'STRICT RULES: facts only, never invent, use exact 5 events, "Not mentioned in the video" if absent.\n\n'
             f'Context:\n{context}\n\nJSON:'
         ).content.strip()).strip()
         if "{" in raw and "}" in raw:
@@ -390,7 +397,7 @@ def send_gmail_tool(pdf_path: str = "", text_content: str = "", subject_suffix: 
         SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
         creds  = None
         tp, cp = Path("token.json"), Path("credentials.json")
-        if not cp.exists(): return "❌ credentials.json not found. Gmail requires Google OAuth setup."
+        if not cp.exists(): return "❌ credentials.json not found. See README for Gmail setup."
         if tp.exists(): creds = Credentials.from_authorized_user_file(str(tp), SCOPES)
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token: creds.refresh(Request())
@@ -420,15 +427,9 @@ def send_gmail_tool(pdf_path: str = "", text_content: str = "", subject_suffix: 
 def build_agent():
     TOOLS  = [search_video_knowledge, generate_xvr_scenario, generate_visual_summary, send_gmail_tool]
     PROMPT = """You are IncidentIQ, an AI agent for incident training and knowledge extraction.
-Sector-agnostic: fire services, police, EMS, civil protection or any training context.
-Video loading is handled separately — never ask user to load a video.
-Always respond in English regardless of the user's language.
-ROUTING:
-- Question about video -> search_video_knowledge
-- XVR scenario -> generate_xvr_scenario
-- Visual/timeline -> generate_visual_summary
-- Email -> send_gmail_tool
-FORMAT: Bullet points, max 15 words per bullet."""
+Always respond in English. Video loading is handled separately.
+ROUTING: Question->search_video_knowledge | XVR->generate_xvr_scenario | Visual->generate_visual_summary | Email->send_gmail_tool
+FORMAT: Bullet points, max 15 words per bullet. Always end with Sources: [timestamps] when available."""
     lw = llm.bind_tools(TOOLS)
     def agent_node(state: MessagesState):
         return {"messages":[lw.invoke([SystemMessage(content=PROMPT)]+state["messages"])]}
@@ -436,27 +437,6 @@ FORMAT: Bullet points, max 15 words per bullet."""
     b.add_node("agent",agent_node); b.add_node("tools",ToolNode(TOOLS))
     b.add_edge(START,"agent"); b.add_conditional_edges("agent",tools_condition); b.add_edge("tools","agent")
     return b.compile(checkpointer=MemorySaver())
-
-
-def transcribe_audio(audio):
-    """Transcribe audio using OpenAI Whisper."""
-    if audio is None:
-        return ""
-    try:
-        sr, data = audio
-        if data.dtype != np.int16:
-            data = (data * 32767).astype(np.int16)
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            wavfile.write(f.name, sr, data)
-            tmp_path = f.name
-        from openai import OpenAI
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        with open(tmp_path, "rb") as af:
-            result = client.audio.transcriptions.create(model="whisper-1", file=af)
-        os.unlink(tmp_path)
-        return result.text.strip()
-    except Exception as e:
-        return f"Transcription error: {e}"
 
 print("Building agent...")
 agent = build_agent()
@@ -541,6 +521,12 @@ def render_timeline(json_str):
     return html
 
 # ── Handlers ───────────────────────────────────────────────────────────────────
+def handle_reset():
+    S["video_loaded"]=False; S["video_title"]=""; S["video_url"]=""; S["video_id"]=""
+    S["trace"]=[]; S["total_tokens"]=0; S["total_cost"]=0.0; S["run_id"]=""
+    S["thread_id"]=f"s_{uuid.uuid4().hex[:8]}"
+    return WELCOME, video_status_html(), render_trace(False)
+
 def handle_chat(message, history):
     if not message.strip(): return history, render_trace(False), video_status_html(), ""
     history = history or []
@@ -552,12 +538,19 @@ def handle_chat(message, history):
         return history, render_trace(False), video_status_html(), ""
     if not S["video_loaded"]:
         history.append({"role":"user","content":message})
-        history.append({"role":"assistant","content":"Please paste a YouTube URL first to load a video. Then I can answer your questions, generate reports and create XVR scenarios."})
+        history.append({"role":"assistant","content":"Please paste a YouTube URL first to load a video. Click **🔄 Reset** if you want to start fresh."})
         return history, render_trace(False), video_status_html(), ""
     response, calls, lat = ask(message)
     history.append({"role":"user","content":message})
     history.append({"role":"assistant","content":response})
     return history, render_trace(False), video_status_html(), ""
+
+def handle_voice(audio, history):
+    transcript = transcribe_audio(audio)
+    if not transcript or transcript.startswith("Transcription error"):
+        return history, gr.update(value=None), ""
+    result = handle_chat(transcript, history)
+    return result[0], gr.update(value=None), transcript
 
 def handle_pdf():
     if not S["video_loaded"]:
@@ -566,13 +559,13 @@ def handle_pdf():
     results = vs.similarity_search("key points lessons learned recommendations conclusions", k=12,
         filter={"video_id": S["video_id"]})
     if not results:
-        return "<div style='color:#aaa;padding:20px'>❌ No video data found in Pinecone.</div>", None, render_trace(False)
+        return "<div style='color:#aaa;padding:20px'>❌ No video data found.</div>", None, render_trace(False)
     context = "\n\n".join([r.page_content for r in results])
     try:
         raw = re.sub(r'```json|```','', llm.invoke(
             f'Extract structured info for incident cheatsheet in English.\n'
-            f'Return ONLY JSON: {{"title":"...","subtitle":"...","summary":"2-3 sentence overview of the incident and its main lessons","tags":["tag1","tag2","tag3"],"keypoints":["detailed point with context, max 25 words"],"recommendations":["concrete actionable recommendation, max 20 words"]}}\n'
-            f'Rules: 5-7 keypoints with real detail, 4-5 recommendations, 3-5 tags, no timestamps.\n\nContext:\n{context}\n\nJSON:'
+            f'Return ONLY JSON: {{"title":"...","subtitle":"...","summary":"2-3 sentence overview of the incident","tags":["tag1","tag2","tag3"],"keypoints":["detailed point, max 25 words"],"recommendations":["concrete recommendation, max 20 words"]}}\n'
+            f'Rules: 5-7 keypoints with real detail, 4-5 recommendations, 3-5 tags.\n\nContext:\n{context}\n\nJSON:'
         ).content.strip()).strip()
         data = json.loads(raw)
         S["pdf_data"] = data
@@ -635,13 +628,11 @@ def handle_send(email_to, doc_choice):
 # ── UI ─────────────────────────────────────────────────────────────────────────
 CSS = """
 body { background: #0f0f0f !important; }
-button[aria-label="Opname starten"]::after, button[aria-label="Start recording"]::after { content: "🎤 Record" !important; font-size: 13px !important; }
-button[aria-label="Opname starten"], button[aria-label="Start recording"] { font-size: 0 !important; }
 .gradio-container { background: #0f0f0f !important; max-width: 100% !important; }
 footer { display: none !important; }
 """
 
-with gr.Blocks(title="IncidentIQ") as demo:
+with gr.Blocks(title="IncidentIQ", css=CSS) as demo:
 
     gr.HTML("""
     <div style='display:flex;align-items:center;justify-content:space-between;
@@ -684,14 +675,20 @@ with gr.Blocks(title="IncidentIQ") as demo:
         with gr.Column(scale=3):
             with gr.Tabs():
                 with gr.Tab("💬  Chat"):
-                    chatbot = gr.Chatbot(value=WELCOME, height=480, label="Chat", autoscroll=True)
+                    btn_reset = gr.Button("🔄  Reset / New video", variant="secondary", size="sm")
+                    chatbot   = gr.Chatbot(value=WELCOME, height=420, label="Chat", autoscroll=True)
                     with gr.Row():
                         msg_input = gr.Textbox(
-                            placeholder="Ask a question or paste a YouTube URL...",
-                            label="Input", lines=1, scale=10
+                            placeholder="Type a question or paste a YouTube URL...",
+                            label="", lines=1, scale=10
                         )
                         send_chat = gr.Button("→", scale=1, variant="primary", size="sm")
-                    audio_input = gr.Audio(sources=["microphone"], type="numpy", label="🎤  Speak your question", visible=True, interactive=)
+                    audio_input = gr.Audio(
+                        sources=["microphone"],
+                        type="numpy",
+                        label="🎤  Record your question",
+                        interactive=True,
+                    )
 
                 with gr.Tab("📄  Key Concepts"):
                     btn_pdf  = gr.Button("📄  Generate Key Concepts PDF", variant="primary")
@@ -707,27 +704,21 @@ with gr.Blocks(title="IncidentIQ") as demo:
                     xvr_output   = gr.Textbox(label="XVR Scenario Brief", lines=20, placeholder="Click the button above to generate a scenario.")
                     xvr_download = gr.File(label="Download scenario", visible=True)
 
-    def handle_voice(audio, history):
-        transcript = transcribe_audio(audio)
-        if not transcript or transcript.startswith("Transcription error"):
-            return history, gr.update(value=None), transcript or ""
-        return handle_chat(transcript, history)[0], gr.update(value=None), transcript
-
     # Events
-    msg_input.submit(handle_chat,   [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
-    send_chat.click(handle_chat,    [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
-    btn_pdf.click(handle_pdf,       [], [kc_html,pdf_file,trace_html])
-    btn_tl.click(handle_timeline,   [], [timeline_html,trace_html])
-    btn_xvr.click(handle_xvr,      [], [xvr_output,xvr_download,trace_html])
-    btn_send.click(handle_send,     [email_to,doc_choice], [send_result,trace_html])
+    btn_reset.click(handle_reset,    [], [chatbot, video_status, trace_html])
+    msg_input.submit(handle_chat,    [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
+    send_chat.click(handle_chat,     [msg_input,chatbot], [chatbot,trace_html,video_status,msg_input])
+    audio_input.stop_recording(handle_voice, [audio_input,chatbot], [chatbot,audio_input,msg_input])
+    btn_pdf.click(handle_pdf,        [], [kc_html,pdf_file,trace_html])
+    btn_tl.click(handle_timeline,    [], [timeline_html,trace_html])
+    btn_xvr.click(handle_xvr,        [], [xvr_output,xvr_download,trace_html])
+    btn_send.click(handle_send,      [email_to,doc_choice], [send_result,trace_html])
     pro_toggle.change(lambda p: render_trace(p), [pro_toggle], [trace_html])
-    audio_input.stop_recording(handle_voice, [audio_input, chatbot], [chatbot, audio_input, msg_input])
 
 if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=7860,
         share=False,
-        css=CSS,
         allowed_paths=["/tmp"],
     )
