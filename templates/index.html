@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IncidentIQ — AI Incident Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --red:     #C0392B;
@@ -15,229 +15,145 @@
     --grn-dim: rgba(29,158,117,0.12);
     --grn-bd:  rgba(29,158,117,0.3);
     --amber:   #E67E22;
-    --blue:    --blue:    #4a9eff;
-    --bg:      #060608;
-    --surface: #0d0e12;
-    --s2:      #13151a;
-    --s3:      #1b1e25;
-    --border:  #222630;
-    --text:    #e8e8e8;
-    --muted:   #6c758d;
-    --subtle:  #3f4556;
+    --blue:    #4a9eff;
+    --bg:      #0a0a0a;
+    --surface: #111111;
+    --s2:      #181818;
+    --s3:      #1e1e1e;
+    --border:  #222222;
+    --text:    #e0e0e0;
+    --muted:   #777777;
+    --subtle:  #333333;
   }
-  *, *::before, *::after { box-shrink: 0; box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
 
   /* ── Layout Framework ── */
   .shell   { display: grid; grid-template-rows: 56px 1fr; height: 100vh; }
   
-  /* GEOPTIMALISEERD BALANSGRID: Smalle Zijbalk (260px) | Ruime Chat (550px) | Documenten (Restruimte) */
-  .content { 
-    display: grid; 
-    grid-template-columns: 260px 550px 1fr; 
-    height: calc(100vh - 56px); 
-    overflow: hidden; 
-  }
+  /* HERSTELDE LAYOUT: Gewoon 2 kolommen zoals origineel. Zijbalk vast op 260px, chatgedeelte pakt de restruimte */
+  .content { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - 56px); overflow: hidden; }
 
   /* ── Header ── */
   header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border);
-    height: 56px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    height: 56px;
   }
   .logo { display: flex; align-items: center; gap: 10px; }
   .logo-mark {
-    width: 32px; height: 32px; background: linear-gradient(135deg, var(--red), #962d22); border-radius: 8px;
+    width: 32px; height: 32px; background: var(--red); border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: #fff;
-    box-shadow: 0 0 12px rgba(192,57,43,0.4);
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: #fff;
   }
-  .logo-text { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: -0.02em; }
-  .logo-sub  { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 16px; }
   .badges { display: flex; gap: 6px; }
   .badge {
-    font-size: 10px; padding: 3px 9px; border-radius: 4px; font-family: 'DM Mono', monospace;
-    border: 1px solid; font-weight: 500;
+    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-family: 'DM Mono', monospace;
+    border: 1px solid;
   }
   .badge-red   { color: var(--red);   background: var(--red-dim);   border-color: var(--red-bd); }
   .badge-blue  { color: var(--blue);  background: rgba(74,158,255,.1); border-color: rgba(74,158,255,.3); }
   .badge-green { color: var(--green); background: var(--grn-dim);   border-color: var(--grn-bd); }
 
-  /* ── Kolom 1: Slanke Zijbalk (Control Panel - 260px) ── */
+  /* ── Sidebar (260px breed, rustig en overzichtelijk) ── */
   aside {
     background: var(--surface); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; height: 100%; padding: 12px;
-    gap: 12px; overflow: hidden;
+    display: flex; flex-direction: column; height: 100%; padding: 20px; gap: 20px; overflow-y: auto;
   }
-  
-  .hud-panel {
-    background: linear-gradient(180deg, rgba(13,14,18,0.6) 0%, var(--s2) 100%);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; flex-shrink: 0;
-  }
-  .hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
-  .hud-stat { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); padding: 4px 6px; border-radius: 4px; }
-  .hud-lbl { font-size: 8px; color: var(--muted); text-transform: uppercase; font-weight: 500; }
-  .hud-val { font-family: 'DM Mono', monospace; font-size: 9px; color: #fff; font-weight: 600; margin-top: 1px; }
-
-  .video-pill {
-    background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 10px; flex-shrink: 0; position: relative; overflow: hidden;
-  }
-  .video-pill.loaded { background: rgba(29,158,117,0.04); border-color: var(--grn-bd); }
-  .vp-label { font-size: 8px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
-  .vp-title { font-size: 10px; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  .sidebar-section { flex-shrink: 0; }
+  .sidebar-section { display: flex; flex-direction: column; gap: 6px; }
   .sec-head {
-    font-size: 9px; font-weight: 700; color: #fff; text-transform: uppercase;
-    letter-spacing: .08em; margin-bottom: 8px; border-left: 2px solid var(--red); padding-left: 5px;
+    font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px;
   }
-  label { font-size: 10px; color: var(--muted); display: block; margin-bottom: 3px; font-weight: 500; }
+  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
   input[type=email], select {
     width: 100%; background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 6px 8px; font-size: 11px; color: var(--text); font-family: inherit; outline: none;
+    padding: 8px 10px; font-size: 12px; color: var(--text); font-family: inherit; outline: none;
   }
   .btn-primary {
-    width: 100%; padding: 8px; border-radius: 6px; border: none; cursor: pointer;
-    background: linear-gradient(180deg, var(--red) 0%, #a83226 100%); color: #fff; font-family: 'Syne', sans-serif;
-    font-size: 11px; font-weight: 600; box-shadow: 0 2px 6px rgba(192,57,43,0.2);
+    width: 100%; padding: 10px; border-radius: 6px; border: none; cursor: pointer;
+    background: var(--red); color: #fff; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
   }
-  .send-result { font-size: 10px; color: var(--green); margin-top: 4px; min-height: 12px; font-family: 'DM Mono', monospace; }
+  .send-result { font-size: 11px; color: var(--green); margin-top: 4px; min-height: 14px; }
   .send-result.err { color: var(--red); }
 
-  /* Compact Pipeline Agent Tracer */
-  .trace-wrapper {
-    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
-    background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.02); padding: 8px;
+  /* Rustige Statusbox en Trace (Originele styling) */
+  .video-pill {
+    background: var(--s2); border: 1px solid var(--border); border-radius: 6px; padding: 10px;
   }
-  .trace-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding-right: 2px; position: relative; }
-  .trace-list::before {
-    content: ''; position: absolute; left: 11px; top: 10px; bottom: 10px; width: 2px;
-    background: linear-gradient(180deg, var(--border) 0%, rgba(34,38,48,0.2) 100%); z-index: 1;
-  }
+  .video-pill.loaded { border-color: var(--grn-bd); background: var(--grn-dim); }
+  .vp-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+  .vp-title { font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .trace-list { display: flex; flex-direction: column; gap: 4px; }
   .trace-item {
-    display: flex; gap: 8px; padding: 6px 8px; border-radius: 6px;
-    background: linear-gradient(90deg, var(--s2) 0%, rgba(19,21,26,0.2) 100%);
-    border: 1px solid var(--border); position: relative; z-index: 2; margin-bottom: 2px;
+    font-family: 'DM Mono', monospace; font-size: 11px; padding: 6px 8px; border-radius: 4px;
+    background: var(--s2); border: 1px solid var(--border); display: flex; justify-content: space-between;
   }
-  .trace-led-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 8px; padding-top: 3px; }
-  .trace-led { width: 6px; height: 6px; background: var(--green); border-radius: 50%; box-shadow: 0 0 6px var(--green); animation: pulse 1.8s infinite ease-in-out; }
-  .trace-info { flex: 1; min-width: 0; }
-  .trace-title-row { display: flex; justify-content: space-between; align-items: center; }
-  .trace-node-name { font-size: 10px; font-weight: 600; color: #fff; font-family: 'DM Mono', monospace; }
-  .trace-detail { font-size: 9px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .trace-metrics { text-align: right; font-family: 'DM Mono', monospace; font-size: 8px; display: flex; flex-direction: column; align-items: flex-end; }
-  .trace-status-tag { font-size: 7px; font-weight: 700; padding: 0px 3px; border-radius: 2px; color: var(--green); border: 1px solid rgba(29,158,117,0.2); text-transform: uppercase; }
-  .trace-lat { color: var(--blue); }
-  .trace-cost { color: rgba(255,255,255,0.3); }
-  .trace-empty { font-size: 10px; color: var(--subtle); text-align: center; padding: 30px 0; font-family: 'DM Mono', monospace; }
+  .trace-empty { font-size: 11px; color: var(--subtle); font-family: 'DM Mono', monospace; }
 
-  @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+  /* ── Rechterkant (Grote hoofdsectie, opgesplitst in Chat en Documenten) ── */
+  main { display: grid; grid-template-columns: 550px 1fr; height: 100%; overflow: hidden; }
 
-  /* ── Kolom 2: Ruim Chat Venster (550px) ── */
-  .chat-panel-container {
-    background: #090a0d; border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; height: 100%; padding: 16px; overflow: hidden;
-  }
-  .chat-wrap { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; height: 100%; }
-  .chat-toolbar { display: flex; justify-content: flex-end; flex-shrink: 0; }
-  .btn-reset { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--s2); color: var(--muted); font-size: 11px; cursor: pointer; transition: all 0.2s; font-family: inherit; }
-  .btn-reset:hover { border-color: var(--red-bd); color: var(--red); background: var(--s3); }
+  /* Chat Paneel (Comfortabel breed: 550px) */
+  .chat-panel { display: flex; flex-direction: column; height: 100%; border-right: 1px solid var(--border); background: var(--bg); }
+  .chat-wrap { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; gap: 12px; }
+  .chat-toolbar { display: flex; justify-content: flex-end; }
+  .btn-reset { padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 11px; cursor: pointer; }
   .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
-  .msg { display: flex; gap: 12px; animation: fadeIn .25s ease; }
+  .msg { display: flex; gap: 12px; }
   .msg.user { flex-direction: row-reverse; }
-  .msg-avatar { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; border: 1px solid rgba(255,255,255,0.05); }
-  .msg.assistant .msg-avatar { background: var(--red); color: #fff; box-shadow: 0 2px 8px rgba(192,57,43,0.3); }
-  .msg.user      .msg-avatar { background: var(--s3); color: var(--muted); }
-  .msg-bubble { max-width: 88%; padding: 12px 16px; border-radius: 10px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
-  .msg.assistant .msg-bubble { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 2px; }
-  .msg.user      .msg-bubble { background: linear-gradient(135deg, var(--red) 0%, #9e2e22 100%); color: #fff; border-bottom-right-radius: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .msg-avatar { width: 28px; height: 28px; border-radius: 4px; background: var(--s3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--muted); flex-shrink: 0; }
+  .msg.assistant .msg-avatar { background: var(--red); color: #fff; }
+  .msg-bubble { max-width: 85%; padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; background: var(--surface); border: 1px solid var(--border); }
+  .msg.user .msg-bubble { background: var(--s3); color: #fff; }
   
-  .chat-input-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; flex-shrink: 0; background: var(--surface); padding: 8px; border-radius: 10px; border: 1px solid var(--border); }
-  textarea { flex: 1; background: transparent; border: none; padding: 8px; font-size: 13px; color: var(--text); font-family: inherit; resize: none; outline: none; min-height: 36px; max-height: 100px; }
-  .btn-send { padding: 0 14px; border-radius: 6px; border: none; cursor: pointer; background: var(--red); color: #fff; font-size: 14px; height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
-  .btn-mic { padding: 0 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--s2); color: var(--muted); font-size: 14px; cursor: pointer; height: 36px; }
+  .chat-input-row { display: flex; gap: 8px; background: var(--surface); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+  textarea { flex: 1; background: transparent; border: none; padding: 6px; font-size: 13px; color: var(--text); font-family: inherit; resize: none; outline: none; min-height: 28px; max-height: 120px; }
+  .btn-send { padding: 0 12px; border-radius: 4px; border: none; cursor: pointer; background: var(--red); color: #fff; font-weight: 600; }
+  .btn-mic { padding: 0 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--s2); color: var(--muted); cursor: pointer; }
   .btn-mic.recording { background: var(--red-dim); border-color: var(--red-bd); color: var(--red); }
 
-  /* ── Kolom 3: Workspace & Grote Documentenruimte (Flexibel) ── */
-  .workspace-panel { display: flex; flex-direction: column; overflow: hidden; height: 100%; background: #050608; }
-  .tabs { display: flex; gap: 2px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); height: 45px; flex-shrink: 0; }
-  .tab-btn {
-    padding: 0 16px; height: 45px; font-size: 12px; font-weight: 500; color: var(--muted);
-    cursor: pointer; border: none; background: none; position: relative; font-family: 'Syne', sans-serif;
-  }
-  .tab-btn::after {
-    content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
-    height: 2px; background: var(--red); border-radius: 2px 2px 0 0;
-    transform: scaleX(0); transition: transform .2s;
-  }
+  /* Workspace & Documenten Tabblad Gedeelte (Flexibele restruimte) */
+  .workspace { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #080808; }
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); height: 42px; }
+  .tab-btn { padding: 0 16px; height: 42px; font-size: 12px; color: var(--muted); cursor: pointer; border: none; background: none; font-family: 'Syne', sans-serif; position: relative; }
   .tab-btn.active { color: var(--text); }
-  .tab-btn.active::after { transform: scaleX(1); }
+  .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--red); }
 
-  .panel { display: none; flex: 1; overflow-y: auto; padding: 24px; min-height: 0; }
+  .panel { display: none; flex: 1; overflow-y: auto; padding: 20px; }
   .panel.active { display: flex; flex-direction: column; }
 
-  /* Report & Timeline Styling */
-  .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-shrink: 0; }
-  .panel-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; }
-  .btn-gen { padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; background: var(--red); color: #fff; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(192,57,43,0.3); }
-  .btn-dl { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; text-decoration: none; transition: all 0.2s; font-weight: 500; }
-  .btn-dl:hover { border-color: var(--grn-bd); color: var(--green); }
-  .placeholder-msg { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--subtle); font-size: 13px; font-family: 'DM Mono', monospace; border: 1px dashed var(--border); border-radius: 8px; }
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  /* Originele Document UI */
+  .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .panel-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; }
+  .btn-gen { padding: 6px 14px; border-radius: 4px; border: none; cursor: pointer; background: var(--red); color: #fff; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600; }
+  .btn-dl { padding: 5px 12px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 11px; text-decoration: none; }
+  .placeholder-msg { display: flex; align-items: center; justify-content: center; height: 140px; color: var(--subtle); font-size: 12px; font-family: 'DM Mono', monospace; border: 1px dashed var(--border); border-radius: 6px; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
   
-  .kc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-  .kc-hero { background: linear-gradient(135deg, #11141c 0%, #1e2330 100%); padding: 24px; border-bottom: 1px solid var(--border); }
-  .kc-tag { display: inline-block; font-size: 9px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: var(--red-dim); color: var(--red); border: 1px solid var(--red-bd); margin-bottom: 8px; }
-  .kc-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
-  .kc-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .kc-tags  { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
-  .kc-chip  { font-size: 9px; padding: 2px 8px; border-radius: 4px; background: var(--s2); color: var(--muted); border: 1px solid var(--border); font-family: 'DM Mono', monospace; }
-  .kc-body  { padding: 20px; }
-  .kc-summary { font-size: 13px; color: #a4adbf; line-height: 1.65; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-  .kc-sec-head { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
-  .kc-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.02); }
-  .kc-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 7px; }
-  .kc-dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); } .kc-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .kc-item-text { font-size: 12px; color: #d1d7e2; line-height: 1.6; }
-  .kc-ai-note { margin: 12px 0; padding: 10px 14px; background: rgba(29,158,117,0.03); border-radius: 6px; border: 1px solid var(--grn-bd); font-size: 11px; color: var(--green); font-family: 'DM Mono', monospace; }
+  /* Key Concepts Render */
+  .kc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; }
+  .kc-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .kc-sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .kc-item { font-size: 12px; color: var(--text); margin-bottom: 6px; line-height: 1.5; }
 
-  /* Timeline Data Matrix */
-  .tl-hero { background: linear-gradient(135deg, #0d1117 0%, #171d26 100%); padding: 20px; border-radius: 10px; margin-bottom: 16px; border: 1px solid var(--border); }
-  .tl-tag { display: inline-block; font-size: 9px; font-weight: 600; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: var(--red-dim); color: var(--red); border: 1px solid var(--red-bd); margin-bottom: 6px; }
-  .tl-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 600; }
-  .tl-sub { font-size: 12px; color: var(--muted); }
-  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
-  .metric-card { background: var(--surface); border-radius: 8px; padding: 12px; border: 1px solid var(--border); border-bottom: 3px solid #222630; }
-  .metric-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 600; color: #fff; }
-  .metric-unit { font-size: 11px; color: var(--muted); font-weight: 400; }
-  .metric-label { font-size: 10px; color: var(--muted); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
-  .tl-events { display: flex; flex-direction: column; margin-bottom: 16px; }
-  .tl-row { display: flex; }
-  .tl-time { width: 56px; flex-shrink: 0; padding-top: 12px; text-align: right; padding-right: 10px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); font-weight: 600; }
-  .tl-line-col { width: 16px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-top: 14px; }
-  .tl-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 6px rgba(255,255,255,0.2); }
-  .tl-vert { width: 1px; flex: 1; background: var(--border); min-height: 20px; }
-  .tl-card { flex: 1; padding: 4px 0 16px 12px; }
-  .tl-card-inner { background: var(--surface); border-radius: 8px; padding: 12px; border: 1px solid var(--border); border-left: 4px solid #333; }
-  .tl-ev-title { font-size: 13px; font-weight: 600; color: #fff; }
-  .tl-ev-badge { font-size: 9px; margin-left: 6px; font-weight: 600; font-family: 'DM Mono', monospace; text-transform: uppercase; padding: 1px 4px; border-radius: 3px; background: rgba(255,255,255,0.05); }
-  .tl-ev-text { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 4px; }
-  .learnings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .learn-card { background: var(--surface); border-radius: 8px; padding: 12px; border: 1px solid var(--border); }
-  .learn-num { font-size: 10px; color: var(--red); font-family: 'DM Mono', monospace; font-weight: 700; margin-bottom: 2px; }
-  .learn-title { font-size: 13px; font-weight: 600; color: #fff; }
-  .learn-text { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
-  .sec-head-tl { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin: 16px 0 8px; letter-spacing: 0.05em; }
+  /* Timeline Render */
+  .tl-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+  .metric-card { background: var(--surface); border-radius: 6px; padding: 10px; border: 1px solid var(--border); }
+  .metric-val { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 600; }
+  .metric-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .tl-row { display: flex; gap: 12px; margin-bottom: 8px; font-size: 12px; }
+  .tl-time { font-family: 'DM Mono', monospace; color: var(--muted); width: 45px; }
 
-  .xvr-output { background: #08090c; border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: 'DM Mono', monospace; font-size: 12px; color: #b8c0d2; line-height: 1.75; white-space: pre-wrap; flex: 1; overflow-y: auto; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+  /* XVR Render */
+  .xvr-output { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px; font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:none; } }
-
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -246,10 +162,7 @@
   <header>
     <div class="logo">
       <div class="logo-mark">IQ</div>
-      <div>
-        <div class="logo-text">IncidentIQ</div>
-        <div class="logo-sub" id="sessionCost">Session Infrastructure Active</div>
-      </div>
+      <div class="logo-text">IncidentIQ</div>
     </div>
     <div class="badges">
       <span class="badge badge-red">gpt-4o-mini</span>
@@ -261,115 +174,101 @@
   <div class="content">
 
     <aside>
-      <div class="hud-panel">
-        <div class="vp-label" style="color:#fff;"><span style="color:var(--red);">●</span> System Telemetry</div>
-        <div class="hud-grid">
-          <div class="hud-stat">
-            <div class="hud-lbl">Agent State</div>
-            <div class="hud-val" style="color: var(--green);" id="hudState">STANDBY</div>
-          </div>
-          <div class="hud-stat">
-            <div class="hud-lbl">Total Cost</div>
-            <div class="hud-val" id="hudCost">$0.00000</div>
-          </div>
-        </div>
-      </div>
-
       <div id="videoPill" class="video-pill">
-        <div id="vpLabel" class="vp-label">🔘 Context Sync State</div>
-        <div id="vpTitle" class="vp-title" style="color: var(--muted);">Unlinked (Awaiting URL)</div>
+        <div id="vpLabel" class="vp-label">Video Status</div>
+        <div id="vpTitle" class="vp-title" style="color: var(--muted);">No video loaded</div>
       </div>
 
       <div class="sidebar-section">
-        <div class="sec-head">Action Relays</div>
-        <label>Operator Email</label>
+        <div class="sec-head">Send Report</div>
+        <label>Enter an email address</label>
         <input type="email" id="emailTo" placeholder="operator@incident.org">
-        <div style="margin-top: 6px;"></div>
-        <label>Output Blueprint</label>
+        <div style="margin-top: 4px;"></div>
+        <label>Select document type</label>
         <select id="docChoice">
-          <option value="PDF">📄 Key Concepts PDF</option>
-          <option value="Timeline">📊 Visual Timeline</option>
-          <option value="XVR">🎮 Simulation Manual</option>
+          <option value="PDF">Key Concepts PDF</option>
+          <option value="Timeline">Analytical Timeline</option>
+          <option value="XVR">XVR Simulation</option>
         </select>
-        <div style="margin-top: 8px;"></div>
-        <button class="btn-primary" id="btnSend" onclick="sendDoc()">Execute Dispatch</button>
+        <div style="margin-top: 10px;"></div>
+        <button class="btn-primary" id="btnSend" onclick="sendDoc()">Send</button>
         <div id="sendResult" class="send-result"></div>
       </div>
 
-      <div class="trace-wrapper">
-        <div class="sec-head">Graph Execution Pipeline</div>
+      <div class="sidebar-section">
+        <div class="sec-head">Execution Trace</div>
         <div id="traceList" class="trace-list">
-          <div class="trace-empty">Pipeline idle — await trigger</div>
+          <div class="trace-empty">No steps executed yet</div>
         </div>
       </div>
     </aside>
 
-    <div class="chat-panel-container">
-      <div class="chat-wrap">
-        <div class="chat-toolbar">
-          <button class="btn-reset" onclick="resetSession()">🔄 Flush Active States</button>
-        </div>
-        <div class="messages" id="messages">
-          <div class="msg assistant">
-            <div class="msg-avatar">IQ</div>
-            <div class="msg-bubble">⚡ <strong>Core Engine Boot Sequence Successful.</strong>
-
-• Supply a valid <strong>YouTube Stream URL</strong> to orchestrate vector indexing.
-• Chat agent uses dynamic <strong>LangGraph routing</strong> to retrieve situational truths.
-• Use adjacent tabs to compile data arrays.</div>
+    <main>
+      
+      <div class="chat-panel">
+        <div class="chat-wrap">
+          <div class="chat-toolbar">
+            <button class="btn-reset" onclick="resetSession()">Reset Session</button>
+          </div>
+          <div class="messages" id="messages">
+            <div class="msg assistant">
+              <div class="msg-avatar">IQ</div>
+              <div class="msg-bubble">Welcome to IncidentIQ. Paste a YouTube URL to index the stream or type a query to ask questions.</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <textarea id="msgInput" rows="1" placeholder="Type a message or paste a YouTube URL..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            <button class="btn-mic" id="btnMic" onclick="toggleVoice()">🎤</button>
+            <button class="btn-send" onclick="sendChat()">Send</button>
           </div>
         </div>
-        <div class="chat-input-row">
-          <textarea id="msgInput" rows="1" placeholder="Query repository or feed stream link..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-          <button class="btn-mic" id="btnMic" onclick="toggleVoice()">🎤</button>
-          <button class="btn-send" onclick="sendChat()">↑</button>
+      </div>
+
+      <div class="workspace">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('keyconcepts',this)">Key Concepts</button>
+          <button class="tab-btn" onclick="switchTab('timeline',this)">Analytical Timeline</button>
+          <button class="tab-btn" onclick="switchTab('xvr',this)">XVR Simulation</button>
         </div>
-      </div>
-    </div>
 
-    <div class="workspace-panel">
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('keyconcepts',this)">📄 Key Concepts</button>
-        <button class="tab-btn" onclick="switchTab('timeline',this)">📊 Analytical Timeline</button>
-        <button class="tab-btn" onclick="switchTab('xvr',this)">🎮 XVR Simulation</button>
-      </div>
-
-      <div id="panel-keyconcepts" class="panel active">
-        <div class="panel-header">
-          <div class="panel-title">Extracted Operational Key Concepts</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <a id="btnDlPdf" class="btn-dl" href="/api/pdf/download" style="display:none">Download Compiled PDF</a>
-            <button class="btn-gen" id="btnGenPdf" onclick="generatePdf()"><span>📄 Extract Facts</span></button>
+        <div id="panel-keyconcepts" class="panel active">
+          <div class="panel-header">
+            <div class="panel-title">Key Concepts</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <a id="btnDlPdf" class="btn-dl" href="/api/pdf/download" style="display:none">Download PDF</a>
+              <button class="btn-gen" id="btnGenPdf" onclick="generatePdf()">Generate</button>
+            </div>
           </div>
+          <div id="kcContent"><div class="placeholder-msg">No video loaded. Data will appear here once generated.</div></div>
         </div>
-        <div id="kcContent"><div class="placeholder-msg">Awaiting operational stream index binding.</div></div>
-      </div>
 
-      <div id="panel-timeline" class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Chronological Metrics & Event Log</div>
-          <button class="btn-gen" id="btnGenTl" onclick="generateTimeline()"><span>📊 Compile Logs</span></button>
-        </div>
-        <div id="tlContent"><div class="placeholder-msg">Awaiting operational stream index binding.</div></div>
-      </div>
-
-      <div id="panel-xvr" class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Simulation Environment Target Blueprints</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <a id="btnDlXvr" class="btn-dl" href="/api/xvr/download" style="display:none">Download Scenario Text</a>
-            <button class="btn-gen" id="btnGenXvr" onclick="generateXvr()"><span>🎮 Compile Scenario</span></button>
+        <div id="panel-timeline" class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Analytical Timeline</div>
+            <button class="btn-gen" id="btnGenTl" onclick="generateTimeline()">Generate</button>
           </div>
+          <div id="tlContent"><div class="placeholder-msg">No video loaded. Data will appear here once generated.</div></div>
         </div>
-        <div id="xvrContent"><div class="placeholder-msg">Awaiting operational stream index binding.</div></div>
+
+        <div id="panel-xvr" class="panel">
+          <div class="panel-header">
+            <div class="panel-title">XVR Simulation</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <a id="btnDlXvr" class="btn-dl" href="/api/xvr/download" style="display:none">Download Text</a>
+              <button class="btn-gen" id="btnGenXvr" onclick="generateXvr()">Generate</button>
+            </div>
+          </div>
+          <div id="xvrContent"><div class="placeholder-msg">No video loaded. Data will appear here once generated.</div></div>
+        </div>
       </div>
-    </div>
+
+    </main>
 
   </div>
 </div>
 
 <script>
-/* ── UI Operational Logic ── */
+/* ── UI Logic ── */
 function switchTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -383,109 +282,47 @@ function updateVideoStatus(loaded, title) {
   const vptitle = document.getElementById('vpTitle');
   if (loaded) {
     pill.classList.add('loaded');
-    label.innerHTML = '<span style="color:var(--green)">●</span> CONTEXT MOUNTED';
-    vptitle.textContent = (title || '').slice(0, 24) + '...';
-    vptitle.style.color = 'var(--text)';
+    label.textContent = 'Active Video';
+    vptitle.textContent = title || 'Video Loaded';
   } else {
     pill.classList.remove('loaded');
-    label.innerHTML = '🔘 Context Sync State';
-    vptitle.textContent = 'Unlinked (Awaiting URL)';
-    vptitle.style.color = 'var(--muted)';
+    label.textContent = 'Video Status';
+    vptitle.textContent = 'No video loaded';
   }
 }
-
-/* ── DevOps Live Monitor Rendering Engine ── */
-const NODE_ICONS = { 'LOAD': '💾', 'SEARCH': '🔍', 'TIMELINE': '📅', 'PDF': '📄', 'XVR': '🎮', 'SEND': '✉️' };
-const NODE_NAMES = { 'LOAD': 'LOAD_STREAM', 'SEARCH': 'VEC_QUERY', 'TIMELINE': 'TIMELINE_GEN', 'PDF': 'PDF_COMPILE', 'XVR': 'XVR_SYNTHESIS', 'SEND': 'SMTP_RELAY' };
 
 function renderTrace(items) {
   const el = document.getElementById('traceList');
   if (!items || !items.length) {
-    el.innerHTML = '<div class="trace-empty">Pipeline idle — await trigger</div>';
-    document.getElementById('hudState').textContent = 'STANDBY';
-    document.getElementById('hudState').style.color = 'var(--green)';
+    el.innerHTML = '<div class="trace-empty">No steps executed yet</div>';
     return;
   }
-  
-  let accumulatedCost = 0;
-
-  el.innerHTML = items.map(i => {
-    const cost = i.cost || 0;
-    accumulatedCost += cost;
-
-    const ico = NODE_ICONS[i.label] || '🤖';
-    const name = NODE_NAMES[i.label] || i.label + '_NODE';
-    const latDisplay = i.lat ? `${i.lat.toFixed(2)}s` : '0.00s';
-    
-    let statusText = 'HEALTHY';
-    let statusColor = 'var(--green)';
-    if (i.lat > 2.0) { statusText = 'LATENCY_WARN'; statusColor = 'var(--amber)'; }
-
-    return `
-      <div class="trace-item">
-        <div class="trace-led-col">
-          <div class="trace-led" style="background:${statusColor}; box-shadow: 0 0 6px ${statusColor}"></div>
-        </div>
-        <div class="trace-info">
-          <div class="trace-title-row">
-            <span class="trace-node-name">${ico} ${name}</span>
-            <div class="trace-metrics">
-              <span class="trace-lat" style="color:${statusColor}">${latDisplay}</span>
-            </div>
-          </div>
-          <div class="trace-title-row" style="margin-top: 1px;">
-            <span class="trace-detail">${i.detail || 'Step completed'}</span>
-            <div class="trace-metrics">
-              <span class="trace-cost">$${cost.toFixed(5)}</span>
-            </div>
-          </div>
-          <div class="trace-title-row" style="margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 2px;">
-            <span class="trace-status-tag" style="color:${statusColor}; border-color:${statusColor}40; background:${statusColor}10">${statusText}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  const costString = `$${accumulatedCost.toFixed(5)}`;
-  document.getElementById('hudCost').textContent = costString;
-  document.getElementById('sessionCost').innerHTML = `Infrastructure Load: <span style="color:var(--blue);font-family:'DM Mono';font-weight:700;">${costString}</span>`;
-  
-  document.getElementById('hudState').textContent = 'PROCESSING';
-  document.getElementById('hudState').style.color = 'var(--blue)';
-  setTimeout(() => {
-    document.getElementById('hudState').textContent = 'ACTIVE_IDLE';
-    document.getElementById('hudState').style.color = 'var(--green)';
-  }, 1000);
+  el.innerHTML = items.map(i => `
+    <div class="trace-item">
+      <span>${i.label || 'step'}</span>
+      <span style="color:var(--muted)">${i.lat ? i.lat.toFixed(2)+'s' : ''}</span>
+    </div>
+  `).join('');
 }
 
-/* ── Intelligent Chat Functions ── */
+/* ── Chat Functions ── */
 let isTyping = false;
 let mediaRecorder = null;
 let audioChunks   = [];
 let isRecording   = false;
 
 function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
-function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
 
 function appendMsg(role, content) {
   const msgs = document.getElementById('messages');
-  const div  = document.createElement('div');
-  div.className = `msg ${role}`;
+  const div  = document.createElement('div'); div.className = `msg ${role}`;
   const initials = role === 'assistant' ? 'IQ' : 'YOU';
   div.innerHTML = `<div class="msg-avatar">${initials}</div><div class="msg-bubble">${escHtml(content)}</div>`;
   msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
   return div;
 }
 
-function appendTyping() {
-  const msgs = document.getElementById('messages');
-  const div  = document.createElement('div'); div.className = 'msg assistant'; div.id = 'typingIndicator';
-  div.innerHTML = `<div class="msg-avatar">IQ</div><div class="msg-bubble"><span style="color:var(--muted); font-family:'DM Mono'; font-size:11px;">[LANGGRAPH] Resolving vectors...</span></div>`;
-  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
-}
-
-function removeTyping() { const el = document.getElementById('typingIndicator'); if (el) el.remove(); }
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>'); }
 
 async function sendChat() {
@@ -494,19 +331,18 @@ async function sendChat() {
   if (!msg || isTyping) return;
   input.value = ''; input.style.height = 'auto';
   isTyping = true;
-  appendMsg('user', msg); appendTyping();
+  appendMsg('user', msg);
   try {
     const res  = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({message: msg}) });
     const data = await res.json();
-    removeTyping();
-    appendMsg('assistant', data.response || data.error || 'Execution returned without buffer payload.');
+    appendMsg('assistant', data.response || data.error || 'No response received.');
     updateVideoStatus(data.video_loaded, data.video_title);
     renderTrace(data.trace);
-  } catch(e) { removeTyping(); appendMsg('assistant', '❌ Infrastructure Fault: ' + e.message); }
+  } catch(e) { appendMsg('assistant', 'Error: ' + e.message); }
   isTyping = false;
 }
 
-/* ── Voice Synthesis System ── */
+/* ── Voice ── */
 async function toggleVoice() {
   const btn = document.getElementById('btnMic');
   if (!isRecording) {
@@ -529,27 +365,26 @@ async function toggleVoice() {
         stream.getTracks().forEach(t => t.stop());
       };
       mediaRecorder.start(); isRecording = true; btn.classList.add('recording'); btn.textContent = '⏹';
-    } catch(e) { alert('Audio capture framework failed.'); }
+    } catch(e) { alert('Microphone access failed.'); }
   } else { if (mediaRecorder) mediaRecorder.stop(); isRecording = false; }
 }
 
-/* ── Kernel Cache Resetter ── */
+/* ── Reset ── */
 async function resetSession() {
   await fetch('/api/reset', {method:'POST'});
-  document.getElementById('messages').innerHTML = `<div class="msg assistant"><div class="msg-avatar">IQ</div><div class="msg-bubble">🔄 <strong>System state unmounted.</strong> Memory flushed.</div></div>`;
+  document.getElementById('messages').innerHTML = `<div class="msg assistant"><div class="msg-avatar">IQ</div><div class="msg-bubble">Session reset successfully.</div></div>`;
   updateVideoStatus(false, ''); renderTrace([]);
-  document.getElementById('kcContent').innerHTML  = '<div class="placeholder-msg">Awaiting operational stream index binding.</div>';
-  document.getElementById('tlContent').innerHTML  = '<div class="placeholder-msg">Awaiting operational stream index binding.</div>';
-  document.getElementById('xvrContent').innerHTML = '<div class="placeholder-msg">Awaiting operational stream index binding.</div>';
+  document.getElementById('kcContent').innerHTML  = '<div class="placeholder-msg">No video loaded. Data will appear here once generated.</div>';
+  document.getElementById('tlContent').innerHTML  = '<div class="placeholder-msg">No video loaded. Data will appear here once generated.</div>';
+  document.getElementById('xvrContent').innerHTML = '<div class="placeholder-msg">No video loaded. Data will appear here once generated.</div>';
   document.getElementById('btnDlPdf').style.display  = 'none'; document.getElementById('btnDlXvr').style.display  = 'none';
   document.getElementById('sendResult').textContent  = '';
-  document.getElementById('hudCost').textContent = '$0.00000';
 }
 
-/* ── Document Processing Pipelines ── */
+/* ── Document Generation ── */
 async function generatePdf() {
   const btn = document.getElementById('btnGenPdf'); setBtnLoading(btn, true);
-  document.getElementById('kcContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Extracting unstructured vector data profiles...</div>';
+  document.getElementById('kcContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Generating...</div>';
   document.getElementById('btnDlPdf').style.display = 'none';
   try {
     const res  = await fetch('/api/pdf', {method:'POST'}); const data = await res.json();
@@ -560,19 +395,21 @@ async function generatePdf() {
 }
 
 function renderKeyConceptsUI(d) {
-  const tags = (d.tags||[]).map(t=>`<span class="kc-chip">${t}</span>`).join('');
-  const kps  = (d.keypoints||[]).map(k=>`<div class="kc-item"><div class="kc-dot red"></div><div class="kc-item-text">${escHtml(k)}</div></div>`).join('');
-  const recs = (d.recommendations||[]).map(r=>`<div class="kc-item"><div class="kc-dot green"></div><div class="kc-item-text">${escHtml(r)}</div></div>`).join('');
+  const kps  = (d.keypoints||[]).map(k=>`<div class="kc-item">• ${escHtml(k)}</div>`).join('');
+  const recs = (d.recommendations||[]).map(r=>`<div class="kc-item">• ${escHtml(r)}</div>`).join('');
   document.getElementById('kcContent').innerHTML = `
     <div class="kc-card">
-      <div class="kc-hero"><div class="kc-tag">Intelligence Summary Profile</div><div class="kc-title">${escHtml(d.title||'')}</div><div class="kc-sub">${escHtml(d.subtitle||'')}</div><div class="kc-tags">${tags}</div></div>
-      <div class="kc-body">${d.summary?`<div class="kc-summary">${escHtml(d.summary)}</div>`:''}<div class="kc-sec-head">Analyzed Key Points</div>${kps}<div class="kc-ai-note">Automated Engine Inference — Dynamic vector spaces compiled.</div><div class="kc-sec-head" style="margin-top:16px">Tactical Incident Mitigations</div>${recs}</div>
+      <div class="kc-title">${escHtml(d.title||'')}</div>
+      <div class="kc-sub">${escHtml(d.subtitle||'')}</div>
+      <p style="font-size:13px; margin-bottom:12px; line-height:1.5;">${escHtml(d.summary||'')}</p>
+      <div style="font-weight:600; font-size:13px; margin-top:12px; margin-bottom:6px;">Key Points</div>${kps}
+      <div style="font-weight:600; font-size:13px; margin-top:12px; margin-bottom:6px;">Recommendations</div>${recs}
     </div>`;
 }
 
 async function generateTimeline() {
   const btn = document.getElementById('btnGenTl'); setBtnLoading(btn, true);
-  document.getElementById('tlContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Aligning sequential telemetry matrices...</div>';
+  document.getElementById('tlContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Generating...</div>';
   try {
     const res  = await fetch('/api/timeline', {method:'POST'}); const data = await res.json();
     if (data.error) { document.getElementById('tlContent').innerHTML = `<div class="placeholder-msg" style="color:var(--red)">❌ ${data.error}</div>`; }
@@ -582,15 +419,14 @@ async function generateTimeline() {
 }
 
 function renderTimelineUI(d) {
-  const metrics = (d.metrics||[]).map(m => `<div class="metric-card" style="border-color:${m.color}"><div class="metric-val">${m.value||'–'}<span class="metric-unit"> ${m.unit||''}</span></div><div class="metric-label">${m.label||''}</div></div>`).join('');
-  const events = (d.timeline||[]).map(ev => { return `<div class="tl-row"><div class="tl-time">${ev.timestamp||''}</div><div class="tl-line-col"><div class="tl-dot" style="background:${ev.color}; box-shadow: 0 0 6px ${ev.color}"></div><div class="tl-vert"></div></div><div class="tl-card"><div class="tl-card-inner" style="border-color:${ev.color}"><div class="tl-ev-title">${escHtml(ev.title||'')} <span class="tl-ev-badge" style="color:${ev.color}; border: 1px solid ${ev.color}40; background:${ev.color}0d">${ev.badge||''}</span></div><div class="tl-ev-text">${escHtml(ev.text||'')}</div></div></div></div>`; }).join('');
-  const learns = (d.learnings||[]).map(l => `<div class="learn-card"><div class="learn-num">${l.number||''}</div><div class="learn-title">${escHtml(l.title||'')}</div><div class="learn-text">${escHtml(l.text||'')}</div></div>`).join('');
-  document.getElementById('tlContent').innerHTML = `<div class="tl-hero"><div class="tl-tag">Temporal Event Deconstruction</div><div class="tl-title">${escHtml(d.title||'')}</div><div class="tl-sub">${escHtml(d.subtitle||'')} · ${d.duration||''}</div></div><div class="metrics-row">${metrics}</div><div class="tl-events">${events}</div><div class="sec-head-tl">Strategic System Takeaways</div><div class="learnings-grid">${learns}</div>`;
+  const metrics = (d.metrics||[]).map(m => `<div class="metric-card"><div class="metric-val">${m.value||''} ${m.unit||''}</div><div class="metric-label">${m.label||''}</div></div>`).join('');
+  const events = (d.timeline||[]).map(ev => `<div class="tl-row"><div class="tl-time">[${ev.timestamp||''}]</div><div><strong>${escHtml(ev.title||'')}</strong> – ${escHtml(ev.text||'')}</div></div>`).join('');
+  document.getElementById('tlContent').innerHTML = `<div class="tl-title">${escHtml(d.title||'')}</div><div class="metrics-row">${metrics}</div><div>${events}</div>`;
 }
 
 async function generateXvr() {
   const btn = document.getElementById('btnGenXvr'); setBtnLoading(btn, true);
-  document.getElementById('xvrContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Synthesizing scenario frameworks...</div>';
+  document.getElementById('xvrContent').innerHTML = '<div class="placeholder-msg"><span class="spinner"></span>&nbsp; Generating...</div>';
   document.getElementById('btnDlXvr').style.display = 'none';
   try {
     const res  = await fetch('/api/xvr', {method:'POST'}); const data = await res.json();
@@ -600,20 +436,20 @@ async function generateXvr() {
   setBtnLoading(btn, false);
 }
 
-/* ── SMTP API Dispatch Relay ── */
+/* ── Send Report ── */
 async function sendDoc() {
   const emailTo   = document.getElementById('emailTo').value.trim();
   const docChoice = document.getElementById('docChoice').value;
   const resultEl  = document.getElementById('sendResult');
   const btn       = document.getElementById('btnSend');
-  if (!emailTo) { resultEl.textContent = '⚠️ Dispatch target required.'; resultEl.className='send-result err'; return; }
-  btn.disabled = true; resultEl.textContent = '⚡ Initializing SMTP...'; resultEl.className='send-result';
+  if (!emailTo) { resultEl.textContent = '⚠️ Enter an email address.'; resultEl.className='send-result err'; return; }
+  btn.disabled = true; resultEl.textContent = '⏳ Sending...'; resultEl.className='send-result';
   try {
     const res  = await fetch('/api/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email_to: emailTo, doc_choice: docChoice}) });
     const data = await res.json();
-    if (data.error) { resultEl.textContent = '❌ EXPORT_ERR: ' + data.error; resultEl.className='send-result err'; }
-    else { resultEl.textContent = '✓ RELAY_SUCCESS: ' + data.result; resultEl.className='send-result'; renderTrace(data.trace); }
-  } catch(e) { resultEl.textContent = '❌ CRITICAL_FAULT: ' + e.message; resultEl.className='send-result err'; }
+    if (data.error) { resultEl.textContent = '❌ ' + data.error; resultEl.className='send-result err'; }
+    else { resultEl.textContent = data.result; resultEl.className='send-result'; renderTrace(data.trace); }
+  } catch(e) { resultEl.textContent = '❌ ' + e.message; resultEl.className='send-result err'; }
   btn.disabled = false;
 }
 
