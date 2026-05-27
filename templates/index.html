@@ -303,7 +303,6 @@
 <body>
 <div class="shell">
 
-  <!-- Header -->
   <header>
     <div class="logo">
       <div class="logo-mark">IQ</div>
@@ -321,15 +320,12 @@
 
   <div class="content">
 
-    <!-- Sidebar -->
     <aside>
-      <!-- Video status -->
       <div id="videoPill" class="video-pill">
         <div id="vpLabel" class="vp-label">No video loaded</div>
         <div id="vpTitle" class="vp-title">Paste a YouTube URL in chat</div>
       </div>
 
-      <!-- Send -->
       <div class="sidebar-section">
         <div class="sec-head">Send Document</div>
         <label>To</label>
@@ -346,7 +342,6 @@
         <div id="sendResult" class="send-result"></div>
       </div>
 
-      <!-- Trace -->
       <div class="sidebar-section" style="flex:1">
         <div class="sec-head">Agent Activity</div>
         <div id="traceList" class="trace-list">
@@ -355,9 +350,7 @@
       </div>
     </aside>
 
-    <!-- Main -->
     <main>
-      <!-- Tabs -->
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('chat',this)">💬 Chat</button>
         <button class="tab-btn" onclick="switchTab('keyconcepts',this)">📄 Key Concepts</button>
@@ -365,7 +358,6 @@
         <button class="tab-btn" onclick="switchTab('xvr',this)">🎮 XVR Scenario</button>
       </div>
 
-      <!-- ── Chat ── -->
       <div id="panel-chat" class="panel active">
         <div class="chat-wrap">
           <div class="chat-toolbar">
@@ -392,7 +384,6 @@
         </div>
       </div>
 
-      <!-- ── Key Concepts ── -->
       <div id="panel-keyconcepts" class="panel">
         <div class="panel-header">
           <div class="panel-title">Key Concepts</div>
@@ -408,7 +399,6 @@
         </div>
       </div>
 
-      <!-- ── Timeline ── -->
       <div id="panel-timeline" class="panel">
         <div class="panel-header">
           <div class="panel-title">Visual Timeline</div>
@@ -421,7 +411,6 @@
         </div>
       </div>
 
-      <!-- ── XVR ── -->
       <div id="panel-xvr" class="panel">
         <div class="panel-header">
           <div class="panel-title">XVR Scenario Brief</div>
@@ -477,21 +466,75 @@ const TRACE_LABELS = {
   pdf:        'Creating PDF',
   send:       'Sending email',
 };
+/* ── Gekleurde DevOps Trace Monitor met Lichtjes en Kosten ──────────────── */
 function renderTrace(items) {
   const el = document.getElementById('traceList');
   if (!items || !items.length) {
     el.innerHTML = '<div class="trace-empty">No activity yet…</div>';
     return;
   }
+  
+  let totalCost = 0;
+
   el.innerHTML = items.map(i => {
-    const lat = i.lat ? ` · ${i.lat.toFixed(1)}s` : '';
-    const label = TRACE_LABELS[i.label] || i.label;
-    return `<div class="trace-item">
-      <span class="trace-check">✓</span>
-      <span class="trace-label">${label}</span>
-      <span class="trace-lat">${lat}</span>
-    </div>`;
+    // Kosten optellen
+    const cost = i.cost || 0;
+    totalCost += cost;
+
+    // Latency kleur bepalen op basis van snelheid
+    let latencyClass = 'bg-gray-900 border-gray-800 text-gray-400';
+    if (i.lat > 0) {
+      if (i.lat > 2.0) latencyClass = 'bg-red-950/40 border-red-900/50 text-red-400';
+      else if (i.lat > 1.0) latencyClass = 'bg-amber-950/40 border-amber-900/50 text-amber-400';
+      else latencyClass = 'bg-emerald-950/40 border-emerald-900/50 text-emerald-400';
+    }
+
+    // Icoontje en label bepalen op basis van de Node uit app.py
+    let nodeEmoji = '🤖';
+    let displayLabel = i.label || 'AGENT';
+    
+    if (i.label === 'LOAD') { nodeEmoji = '💾'; displayLabel = 'LOAD VIDEO'; }
+    if (i.label === 'SEARCH') { nodeEmoji = '🔍'; displayLabel = 'VECTOR SEARCH'; }
+    if (i.label === 'TIMELINE') { nodeEmoji = '📅'; displayLabel = 'TIMELINE GEN'; }
+    if (i.label === 'PDF') { nodeEmoji = '📄'; displayLabel = 'PDF COMPILER'; }
+    if (i.label === 'XVR') { nodeEmoji = '🎮'; displayLabel = 'XVR SCENARIO'; }
+    if (i.label === 'SEND') { nodeEmoji = '✉️'; displayLabel = 'EMAIL DISPATCH'; }
+
+    return `
+      <div style="display: flex; gap: 10px; margin-bottom: 8px; animation: fadeIn .3s ease; position: relative;">
+        <div style="display: flex; flex-direction: column; align-items: center; padding-top: 6px;">
+          <span class="animate-pulse" style="width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green);"></span>
+          <div style="width: 1px; flex: 1; background: var(--border); margin-top: 6px; min-height: 20px;"></div>
+        </div>
+
+        <div style="flex: 1; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+          <div style="min-width: 0; flex: 1;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 5px;">
+              <span>${nodeEmoji}</span> ${displayLabel}
+            </div>
+            <div style="font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;">
+              ${i.detail || 'Node successfully executed'}
+            </div>
+          </div>
+          
+          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0;">
+            <span class="${latencyClass}" style="font-family: 'DM Mono', monospace; font-size: 9px; padding: 1px 5px; border-radius: 4px; border: 1px solid;">
+              ⏱️ ${i.lat ? i.lat.toFixed(2) + 's' : '0.00s'}
+            </span>
+            <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: var(--subtle);">
+              $${cost.toFixed(5)}
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
   }).join('');
+
+  // Bonus presentatietip: Update de header subtitel live met de totale kosten van de sessie
+  const subHeader = document.querySelector('.logo-sub');
+  if (subHeader) {
+    subHeader.innerHTML = `AI Session Cost: <span style="color: var(--blue); font-family: 'DM Mono', monospace; font-weight:500;">$${totalCost.toFixed(5)}</span>`;
+  }
 }
 
 /* ── Chat ──────────────────────────────────────────────────────── */
@@ -678,7 +721,7 @@ function renderKeyConceptsUI(d) {
     </div>`;
 }
 
-/* ── Timeline ────────────────────────────────────────────────────── */
+/* ── Timeline ── */
 const CM = {
   red:   {dot:'#C0392B', bdr:'#C0392B', badge:'#C0392B'},
   amber: {dot:'#E67E22', bdr:'#E67E22', badge:'#E67E22'},

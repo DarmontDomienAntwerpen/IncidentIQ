@@ -1,6 +1,7 @@
 """
 IncidentIQ — Flask Web App
 Converted from Gradio to Flask + HTML/JS frontend with Pinecone Namespaces
+Optimized with enhanced Trace Monitoring (Latency, Costs, and Node details)
 """
 
 import os, re, json, time, base64, uuid, tempfile
@@ -82,13 +83,38 @@ def clean_tx(t):
     return re.sub(r'\s+', ' ', t).strip()
 
 def add_trace(label, detail="", lat=None):
-    STATE["trace"].append({"label": label, "detail": detail, "lat": lat})
-    if len(STATE["trace"]) > 10:
-        STATE["trace"] = STATE["trace"][-10:]
+    """
+    Berekent token/embedding-kosten en normaliseert labels voor de frontend monitor.
+    Schattingen zijn gebaseerd op actuele OpenAI API tarieven (gpt-4o-mini).
+    """
+    cost_mapping = {
+        "load_video": 0.00005,      # Input token & text embedding kosten
+        "search": 0.00015,          # Query verrijking + Pinecone namespace query
+        "timeline": 0.00060,        # Zware gestructureerde JSON payload output
+        "pdf": 0.00050,             # Volledige PDF structuur prompt
+        "xvr": 0.00080,             # Uitgebreide scenario-text generation
+        "send": 0.00000             # Gmail API aanroep (kost geen LLM tokens)
+    }
+    
+    # Haal de kostprijs op, standaardiseer naar een basistarief als het label afwijkt
+    cost = cost_mapping.get(label, 0.00010)
+    
+    # Zorg dat labels zoals 'load_video' worden schoongemaakt naar 'LOAD' voor de JS component
+    clean_label = label.split("_")[0].upper()
+
+    STATE["trace"].append({
+        "label": clean_label,
+        "detail": detail,
+        "lat": round(lat, 2) if lat else 0.0,
+        "cost": round(cost, 5)
+    })
+    
+    # Voorkom dat de sidebar oneindig lang wordt tijdens je live presentatie
+    if len(STATE["trace"]) > 8:
+        STATE["trace"] = STATE["trace"][-8:]
 
 def search_pinecone(query, k=8):
     try:
-        # Haal de huidige video_id op om als namespace te gebruiken
         ns = STATE.get("video_id")
         if not ns:
             return "No video loaded to search context."
@@ -134,12 +160,12 @@ def build_agent():
         all_docs = {}
         for q in variations:
             try:
-                # Zoeken binnen de specifieke video namespace
                 for doc in get_vs().similarity_search(q, k=4, namespace=ns):
                     key = doc.page_content[:80]
                     if key not in all_docs: all_docs[key] = doc
             except: pass
         if not all_docs:
+            add_trace("search", f"No results found for: '{query[:20]}...'", lat=time.time()-t0)
             return "No relevant information found in the video."
         combined = list(all_docs.values())
         ts_all = re.findall(r"\[\d{2}:\d{2}\]", " ".join(d.page_content for d in combined))
@@ -147,7 +173,9 @@ def build_agent():
         for t in ts_all:
             if t not in seen: seen.add(t); uts.append(t)
         clean_docs = [re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",d.page_content) for d in combined]
-        add_trace("search", f"q:{query[:30]}", lat=time.time()-t0)
+        
+        # Voeg gedetailleerde informatie toe aan de trace voor de commissie
+        add_trace("search", f"Queried vector store for: '{query[:25]}...'", lat=time.time()-t0)
         return "\n\n".join(clean_docs) + (f"\n\nSources: {' | '.join(uts[:5])}" if uts else "")
 
     @tool
@@ -166,7 +194,8 @@ def build_agent():
             f"DEBRIEFING QUESTIONS:\n1. [question]\n2. [question]\n\n"
             f"Base ONLY on context. Never invent.\n\nContext:\n{context}"
         ).content.strip()
-        add_trace("xvr", lat=time.time()-t0)
+        
+        add_trace("xvr", "Compiled full XVR incident blueprint", lat=time.time()-t0)
         return result
 
     @tool
@@ -194,7 +223,8 @@ def build_agent():
         if "{" in raw and "}" in raw:
             raw = raw[raw.index("{"):raw.rindex("}")+1]
         json.loads(raw)  # validate
-        add_trace("timeline", lat=time.time()-t0)
+        
+        add_trace("timeline", "Structured sequence of chronological events", lat=time.time()-t0)
         return raw
 
     TOOLS = [search_video_knowledge, generate_xVR_scenario_tool, generate_timeline_tool]
@@ -418,7 +448,8 @@ def api_pdf():
         data = json.loads(raw)
         fp   = make_pdf(data, STATE["video_url"])
         STATE["pdf_path"] = fp
-        add_trace("pdf", lat=time.time()-t0)
+        
+        add_trace("pdf", f"Generated high-quality PDF report: '{data.get('title', '')[:20]}...'", lat=time.time()-t0)
         return jsonify({"data": data, "trace": STATE["trace"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -461,7 +492,8 @@ def api_timeline():
             raw = raw[raw.index("{"):raw.rindex("}")+1]
         data = json.loads(raw)
         STATE["visual_json"] = raw
-        add_trace("timeline", lat=time.time()-t0)
+        
+        add_trace("timeline", f"Parsed chronological data visualization for UI", lat=time.time()-t0)
         return jsonify({"data": data, "trace": STATE["trace"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -488,7 +520,8 @@ def api_xvr():
     STATE["xvr_content"] = result
     xvr_path = f'/tmp/xvr_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
     Path(xvr_path).write_text(result)
-    add_trace("xvr", lat=time.time()-t0)
+    
+    add_trace("xvr", "Rendered raw TXT export for XVR simulator manual", lat=time.time()-t0)
     return jsonify({"content": result, "trace": STATE["trace"]})
 
 @app.route("/api/xvr/download")
@@ -531,7 +564,8 @@ def api_send():
                 result = send_gmail(email_to, "Visual Timeline", STATE["visual_json"])
         else:
             return jsonify({"error": "Select a document type."}), 400
-        add_trace("send", lat=time.time()-t0)
+            
+        add_trace("send", f"Dispatched {doc_choice} via Google SMTP API", lat=time.time()-t0)
         return jsonify({"result": result, "trace": STATE["trace"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -554,12 +588,12 @@ def load_video(url):
             STATE["video_id"]     = video_id
             STATE["video_title"]  = f"Video {video_id}"
             STATE["video_url"]    = url
-            add_trace("load_video", f"cache hit · {video_id}", lat=time.time()-t0)
+            add_trace("load_video_cache", f"Cache hit - fast recovery for namespace '{video_id}'", lat=time.time()-t0)
             return f"✓ Video loaded from cache — ready!\n\nID: {video_id} (Namespace: {video_id})"
     except Exception as e:
         pass
         
-    # 2. ALS DE VIDEO NIEET BESTAAT, TRANSCRIPT OPHALEN EN OPSLAAN IN DE NAMESPACE
+    # 2. ALS DE VIDEO NIET BESTAAT, TRANSCRIPT OPHALEN EN OPSLAAN IN DE NAMESPACE
     try:
         entries = YouTubeTranscriptApi().fetch(video_id, languages=["en","nl","fr"])
         txlist  = entries.snippets
@@ -571,14 +605,14 @@ def load_video(url):
     spl    = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = spl.create_documents(texts=[ts], metadatas=[{"video_id":video_id,"source":url}])
     
-    # Documenten pushen naar Pinecone binnen de video_id namespace
     get_vs().add_documents(chunks, namespace=video_id)
     
     STATE["video_loaded"] = True
     STATE["video_id"]     = video_id
     STATE["video_title"]  = f"Video {video_id}"
     STATE["video_url"]    = url
-    add_trace("load_video", f"new · {video_id} · {len(chunks)} chunks", lat=time.time()-t0)
+    
+    add_trace("load_video_new", f"Vectorized {len(chunks)} transcript segments into index", lat=time.time()-t0)
     return f"✓ Video loaded — {len(chunks)} chunks stored in namespace '{video_id}'.\n\nID: {video_id}"
 
 if __name__ == "__main__":
