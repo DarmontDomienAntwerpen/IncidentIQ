@@ -102,7 +102,7 @@ To enable email sending, place your `credentials.json` (Google OAuth) in the pro
 python app.py
 ```
 
-Open `http://localhost:7860`
+Open 
 
 ---
 
