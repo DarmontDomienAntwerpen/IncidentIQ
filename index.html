@@ -477,21 +477,36 @@ const TRACE_LABELS = {
   pdf:        'Creating PDF',
   send:       'Sending email',
 };
+/* ── RENDER TRACE MET AGENT NODES & LATENCY ── */
 function renderTrace(items) {
   const el = document.getElementById('traceList');
   if (!items || !items.length) {
-    el.innerHTML = '<div class="trace-empty">No activity yet…</div>';
+    el.innerHTML = '<div class="trace-empty">No steps executed yet</div>';
     return;
   }
+  
   el.innerHTML = items.map(i => {
-    const lat = i.lat ? ` · ${i.lat.toFixed(1)}s` : '';
-    const label = TRACE_LABELS[i.label] || i.label;
-    return `<div class="trace-item">
-      <span class="trace-check">✓</span>
-      <span class="trace-label">${label}</span>
-      <span class="trace-lat">${lat}</span>
-    </div>`;
+    // Formatteer de latency op een nette manier
+    const latencyFormatted = i.lat ? (i.lat < 1 ? Math.round(i.lat * 1000) + 'ms' : i.lat.toFixed(2) + 's') : '0ms';
+    
+    // Probeer tokens of details netjes te parsen of te tonen
+    const detailText = i.text ? i.text : 'Node executed successfully';
+    
+    return `
+      <div class="trace-card" style="border-left: 3px solid var(--primary); padding-left: 8px; margin-bottom: 4px;">
+        <div class="trace-header-row" style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 2px;">
+          <span class="trace-node" style="color: var(--text);">● ${i.label || 'agent_node'}</span>
+          <span class="trace-lat" style="color: var(--warning); font-size: 11px;">${latencyFormatted}</span>
+        </div>
+        <div class="trace-details" style="color: var(--muted); font-size: 11px; font-family: 'DM Mono', monospace; background: var(--bg); padding: 4px 6px; border-radius: 4px; margin-top: 2px;">
+          ${escHtml(detailText)}
+        </div>
+      </div>
+    `;
   }).join('');
+
+  // Automatisch naar beneden scrollen van de trace-lijst container
+  el.scrollTop = el.scrollHeight;
 }
 
 /* ── Chat ──────────────────────────────────────────────────────── */
@@ -547,26 +562,31 @@ async function sendChat() {
   const input = document.getElementById('msgInput');
   const msg   = input.value.trim();
   if (!msg || isTyping) return;
-  input.value = '';
-  input.style.height = 'auto';
+  
+  input.value = ''; input.style.height = 'auto';
   isTyping = true;
   appendMsg('user', msg);
-  appendTyping();
+  
+  const loader = document.getElementById('agentLoading');
+  loader.style.display = 'flex';
+  
   try {
-    const res  = await fetch('/api/chat', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({message: msg})
-    });
+    const res  = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({message: msg}) });
     const data = await res.json();
-    removeTyping();
-    appendMsg('assistant', data.response || data.error || 'No response.');
+    appendMsg('assistant', data.response || data.error || 'No response received.');
     updateVideoStatus(data.video_loaded, data.video_title);
     renderTrace(data.trace);
-  } catch(e) {
-    removeTyping();
-    appendMsg('assistant', '❌ Network error: ' + e.message);
+    
+    // Zorgt ervoor dat ook de complete zijbalk naar beneden scrollt als er veel nodes zijn
+    const sidebar = document.querySelector('aside');
+    if (sidebar) sidebar.scrollTop = sidebar.scrollHeight;
+
+  } catch(e) { 
+    appendMsg('assistant', 'Error: ' + e.message); 
+  } finally {
+    isTyping = false;
+    loader.style.display = 'none';
   }
-  isTyping = false;
 }
 
 /* ── Voice input ────────────────────────────────────────────────── */
