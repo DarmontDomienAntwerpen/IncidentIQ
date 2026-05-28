@@ -28,7 +28,7 @@ Paste a YouTube URL → IncidentIQ loads the transcript, stores it in Pinecone, 
 | Agent | LangGraph |
 | RAG | LangChain + multi-query retrieval |
 | Observability | LangSmith |
-| UI | Gradio 6.14 |
+| UI | Flask + HTML |
 | PDF | ReportLab |
 
 ---
@@ -57,7 +57,7 @@ LangGraph Agent ◄──► Tools
     │                  ├── generate_visual_summary
     │                  └── send_gmail_tool
     ▼
-Gradio UI
+Flasj/HTML UI
 ```
 
 ---
