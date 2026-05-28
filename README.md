@@ -59,7 +59,7 @@ LangGraph Agent ◄──► Tools
     │                  ├── generate_visual_summary
     │                  └── send_gmail_tool
     ▼
-Flasj/HTML UI
+Flask/HTML UI
 ```
 
 ---
