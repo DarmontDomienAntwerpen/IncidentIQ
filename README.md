@@ -4,6 +4,11 @@
 
 > Completely adaptable to specific needs and/or industries.
 
+
+Downloadable presentation + demo in link :
+https://www.icloud.com/iclouddrive/07791c-cuvtIF1GGFnpPjiIfg#IncidentIQ
+
+
 Built by Domien Darmont as the final project for the **Ironhack AI Engineer Bootcamp**.
 
 ---
