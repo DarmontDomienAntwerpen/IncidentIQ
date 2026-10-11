@@ -84,8 +84,8 @@ def clean_tx(t):
 
 def add_trace(label, detail="", lat=None):
     """
-    Berekent token/embedding-kosten en normaliseert labels voor de frontend monitor.
-    Schattingen zijn gebaseerd op actuele OpenAI API tarieven (gpt-4o-mini).
+    Estimates token/embedding cost and normalises labels for the frontend monitor.
+    Estimates are based on current OpenAI API pricing (gpt-4o-mini).
     """
     cost_mapping = {
         "load_video": 0.00005,      # Input token & text embedding kosten
@@ -93,13 +93,13 @@ def add_trace(label, detail="", lat=None):
         "timeline": 0.00060,        # Zware gestructureerde JSON payload output
         "pdf": 0.00050,             # Volledige PDF structuur prompt
         "xvr": 0.00080,             # Uitgebreide scenario-text generation
-        "send": 0.00000             # Gmail API aanroep (kost geen LLM tokens)
+        "send": 0.00000             # Gmail API call (uses no LLM tokens)
     }
     
-    # Haal de kostprijs op, standaardiseer naar een basistarief als het label afwijkt
+    # Look up the cost; fall back to a base rate for unknown labels
     cost = cost_mapping.get(label, 0.00010)
     
-    # Zorg dat labels zoals 'load_video' worden schoongemaakt naar 'LOAD' voor de JS component
+    # Normalise labels such as 'load_video' to 'LOAD' for the JS component
     clean_label = label.split("_")[0].upper()
 
     STATE["trace"].append({
@@ -109,7 +109,7 @@ def add_trace(label, detail="", lat=None):
         "cost": round(cost, 5)
     })
     
-    # Voorkom dat de sidebar oneindig lang wordt tijdens je live presentatie
+    # Cap the trace length so the sidebar doesn't grow indefinitely
     if len(STATE["trace"]) > 8:
         STATE["trace"] = STATE["trace"][-8:]
 
@@ -174,7 +174,7 @@ def build_agent():
             if t not in seen: seen.add(t); uts.append(t)
         clean_docs = [re.sub(r"\[\d{2}:\d{2}\]\s*(?=\[\d{2}:\d{2}\])","",d.page_content) for d in combined]
         
-        # Voeg gedetailleerde informatie toe aan de trace voor de commissie
+        # Add detailed information to the execution trace
         add_trace("search", f"Queried vector store for: '{query[:25]}...'", lat=time.time()-t0)
         return "\n\n".join(clean_docs) + (f"\n\nSources: {' | '.join(uts[:5])}" if uts else "")
 
@@ -580,7 +580,7 @@ def load_video(url):
         return f"❌ Cannot extract video ID: {e}"
     t0 = time.time()
     
-    # 1. CONTROLEER OF DE VIDEO AL BESTAAT IN ZIJN EIGEN NAMESPACE (Cache check)
+    # 1. Cache check: is this video already indexed in its own namespace?
     try:
         test = get_vs().similarity_search("incident", k=1, namespace=video_id)
         if test:
@@ -593,7 +593,7 @@ def load_video(url):
     except Exception as e:
         pass
         
-    # 2. ALS DE VIDEO NIET BESTAAT, TRANSCRIPT OPHALEN EN OPSLAAN IN DE NAMESPACE
+    # 2. Not cached: fetch the transcript and store it in a new namespace
     try:
         entries = YouTubeTranscriptApi().fetch(video_id, languages=["en","nl","fr"])
         txlist  = entries.snippets

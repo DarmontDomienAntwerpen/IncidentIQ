@@ -301,7 +301,7 @@ function openModal(id) {
 function closeModal(id) {
   document.getElementById('modal-' + id).style.display = 'none';
 }
-// Sluit modal bij klikken buiten het venster
+// Close the modal when clicking outside it
 window.onclick = function(event) {
   if (event.target.classList.contains('modal-overlay')) {
     event.target.style.display = "none";
