@@ -7,7 +7,7 @@
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991?logo=openai&logoColor=white)
 ![Pinecone](https://img.shields.io/badge/Pinecone-vector_DB-000000)
 ![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-7_passing-brightgreen)
+[![Tests](https://github.com/DarmontDomienAntwerpen/IncidentIQ/actions/workflows/tests.yml/badge.svg)](https://github.com/DarmontDomienAntwerpen/IncidentIQ/actions/workflows/tests.yml)
 
 > **In short:** fire services learn a lot from incident videos, but finding the right moment or turning a video into training material takes hours. With IncidentIQ you paste a YouTube link and get a chat assistant that knows the video, a one-page key-concepts PDF, a visual incident timeline, and a ready-to-use brief for an XVR training simulation. All of it can be emailed to the team in one click.
 >
