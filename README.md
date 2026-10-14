@@ -13,7 +13,7 @@
 >
 > Final project for the **Ironhack AI Engineering Bootcamp (2026)**.
 
-![IncidentIQ answering questions about a high-rise fire case study](docs/images/demo.png)
+![IncidentIQ on a Brussels high-rise fire case study: the analytical timeline with key figures (left), a sourced answer in the chat and the generated XVR scenario brief (right)](docs/images/showcase.png)
 
 ---
 
@@ -140,8 +140,11 @@ IncidentIQ/
 Completed bootcamp project, working end to end. Possible next steps: support for uploaded video and audio files (not only YouTube), and multilingual transcripts.
 
 ## Author
-**Domien Darmont**, AI Engineer, Antwerp, Belgium
-GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)
+**Domien Darmont**, AI Engineer, Antwerp, Belgium  
+GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)  
+LinkedIn: [Domien Darmont](https://www.linkedin.com/in/domien-darmont-b53b7640b/)
+
+A live demo or more information is available on request.
 
 ## License
 © 2026 Domien Darmont. All rights reserved.
