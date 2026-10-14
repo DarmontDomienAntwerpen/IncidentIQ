@@ -467,9 +467,11 @@ async function generateTimeline() {
 }
 
 function renderTimelineUI(d) {
-  const metrics = (d.metrics||[]).map(m => `<div class="metric-card"><div class="metric-val">${m.value||''} ${m.unit||''}</div><div class="metric-label">${m.label||''}</div></div>`).join('');
+  const metrics = (d.metrics||[]).map(m => `<div class="metric-card"><div class="metric-val">${escHtml(m.value||'')} ${escHtml(m.unit||'')}</div><div class="metric-label">${escHtml(m.label||'')}</div></div>`).join('');
   const events = (d.timeline||[]).map(ev => `<div class="tl-row"><div class="tl-time">[${ev.timestamp||''}]</div><div><strong>${escHtml(ev.title||'')}</strong> – ${escHtml(ev.text||'')}</div></div>`).join('');
-  document.getElementById('tlContent').innerHTML = `<div style="padding:4px;"><div class="kc-title" style="margin-bottom:12px;">${escHtml(d.title||'')}</div><div class="metrics-row">${metrics}</div><div>${events}</div></div>`;
+  const learnings = (d.learnings||[]).map((l, i) => `<div class="tl-row"><div class="tl-time">${String(i+1).padStart(2,'0')}</div><div><strong>${escHtml(l.title||'')}</strong> – ${escHtml(l.text||'')}</div></div>`).join('');
+  const learningsBlock = learnings ? `<div class="kc-title" style="margin:16px 0 8px;">Lessons learned</div><div>${learnings}</div>` : '';
+  document.getElementById('tlContent').innerHTML = `<div style="padding:4px;"><div class="kc-title" style="margin-bottom:12px;">${escHtml(d.title||'')}</div><div class="metrics-row">${metrics}</div><div>${events}</div>${learningsBlock}</div>`;
 }
 
 async function generateXvr() {

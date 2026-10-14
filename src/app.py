@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, send_file
+from pydantic import BaseModel, Field
 
 load_dotenv()
 os.environ['LANGCHAIN_TRACING_V2'] = 'true'
@@ -112,6 +113,32 @@ def add_trace(label, detail="", lat=None):
     # Cap the trace length so the sidebar doesn't grow indefinitely
     if len(STATE["trace"]) > 8:
         STATE["trace"] = STATE["trace"][-8:]
+
+def first_ts(text):
+    """Seconds of the first [mm:ss] timestamp in a transcript chunk (for sorting)."""
+    m = re.search(r"\[(\d{2}):(\d{2})\]", text)
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else 10**9
+
+def gather_context(queries, k=4):
+    """Run one search per query and return the unique chunks in video order.
+    A single broad query only finds the chunks closest to that one phrase
+    (often the closing summary); one query per phase covers the whole story."""
+    ns = STATE.get("video_id")
+    if not ns:
+        return ""
+    seen, chunks = set(), []
+    for q in queries:
+        for d in get_vs().similarity_search(q, k=k, namespace=ns):
+            if d.page_content not in seen:
+                seen.add(d.page_content)
+                chunks.append(d.page_content)
+    return "\n\n".join(sorted(chunks, key=first_ts))
+
+def plain_text(text):
+    """Strip Markdown emphasis/headers: the XVR brief is a .txt for the operator."""
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"^#+\s*", "", text, flags=re.M)
+    return text.replace("**", "")
 
 def search_pinecone(query, k=8):
     try:
@@ -461,39 +488,54 @@ def api_pdf_download():
         return "PDF not found", 404
     return send_file(fp, as_attachment=True, download_name="IncidentIQ_KeyConcepts.pdf")
 
+class Metric(BaseModel):
+    value: str = Field(description="Number or short value as stated, e.g. '10' or '2'")
+    unit: str = Field(description="Unit, e.g. 'floors', 'min'; empty if none")
+    label: str = Field(description="What the value measures, max 4 words")
+
+class TimelineEvent(BaseModel):
+    timestamp: str = Field(description="Video timestamp mm:ss where this is described, without brackets")
+    title: str = Field(description="Short phase title, max 6 words")
+    text: str = Field(description="One or two factual sentences")
+
+class Learning(BaseModel):
+    title: str
+    text: str = Field(description="Two sentences")
+
+class TimelineData(BaseModel):
+    title: str = Field(description="Short incident title")
+    metrics: list[Metric] = Field(description="Up to 4 key figures explicitly stated in the context")
+    timeline: list[TimelineEvent] = Field(description="5 to 8 events in chronological incident order")
+    learnings: list[Learning] = Field(description="3 or 4 lessons learned")
+
+TIMELINE_QUERIES = [
+    "call notification dispatch alarm what was reported",
+    "arrival on scene first observations building smoke",
+    "water supply riser problems complications",
+    "search and rescue residents trapped evacuation",
+    "tactics decisions solutions command",
+    "outcome result end of the intervention",
+    "lessons learned summary what we changed",
+]
+
 @app.route("/api/timeline", methods=["POST"])
 def api_timeline():
     if not STATE["video_loaded"]:
         return jsonify({"error": "Load a video first."}), 400
     t0 = time.time()
-    context = search_pinecone("notification arrival problems complications solutions outcome", k=12)
+    context = gather_context(TIMELINE_QUERIES)
     try:
-        raw = re.sub(r'```json|```','', get_llm().invoke(
-            f'Extract facts from context. Return raw JSON:\n'
-            f'{{"title":"[title]","subtitle":"[source]","duration":"[duration or unknown]",'
-            f'"metrics":[{{"value":"[v]","unit":"[u]","label":"[l]","color":"blue"}},'
-            f'{{"value":"[v]","unit":"[u]","label":"[l]","color":"amber"}},'
-            f'{{"value":"[v]","unit":"[u]","label":"[l]","color":"red"}},'
-            f'{{"value":"[v]","unit":"","label":"[l]","color":"green"}}],'
-            f'"timeline":['
-            f'{{"timestamp":"[t]","title":"Notification","text":"[what was reported]","quote":"","tags":["notification"],"color":"blue","badge":"Notification"}},'
-            f'{{"timestamp":"[t]","title":"Arrival","text":"[situation on arrival]","quote":"","tags":["arrival"],"color":"amber","badge":"Arrival"}},'
-            f'{{"timestamp":"[t]","title":"Problems","text":"[complications]","quote":"","tags":["problem"],"color":"red","badge":"Complication"}},'
-            f'{{"timestamp":"[t]","title":"Solutions","text":"[actions taken]","quote":"","tags":["action"],"color":"amber","badge":"Action"}},'
-            f'{{"timestamp":"[t]","title":"End","text":"[outcome]","quote":"","tags":["outcome"],"color":"green","badge":"Outcome"}}],'
-            f'"learnings":['
-            f'{{"number":"01","title":"[t]","text":"[2 sentences]"}},'
-            f'{{"number":"02","title":"[t]","text":"[2 sentences]"}},'
-            f'{{"number":"03","title":"[t]","text":"[2 sentences]"}},'
-            f'{{"number":"04","title":"[t]","text":"[2 sentences]"}}],'
-            f'"source_url":""}}\n\nFacts only, never invent, "Not mentioned" if absent.\n\nContext:\n{context}\n\nJSON:'
-        ).content.strip()).strip()
-        if "{" in raw and "}" in raw:
-            raw = raw[raw.index("{"):raw.rindex("}")+1]
-        data = json.loads(raw)
-        STATE["visual_json"] = raw
-        
-        add_trace("timeline", f"Parsed chronological data visualization for UI", lat=time.time()-t0)
+        data = get_llm().with_structured_output(TimelineData).invoke(
+            "You analyse the transcript of an incident case study presentation by a fire officer. "
+            "Reconstruct the incident itself (not the presentation) as a chronological timeline. "
+            "Use only facts from the transcript; leave out anything it does not state rather than guessing. "
+            "Each event's timestamp is the [mm:ss] marker in the transcript where it is described.\n\n"
+            f"Transcript excerpts, in video order:\n{context}"
+        ).model_dump()
+        for ev in data["timeline"]:
+            ev["timestamp"] = ev["timestamp"].strip("[] ")
+        STATE["visual_json"] = json.dumps(data)
+        add_trace("timeline", "Parsed chronological data visualization for UI", lat=time.time()-t0)
         return jsonify({"data": data, "trace": STATE["trace"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -503,24 +545,20 @@ def api_xvr():
     if not STATE["video_loaded"]:
         return jsonify({"error": "Load a video first."}), 400
     t0 = time.time()
-    context = search_pinecone("location building fire cause complications decisions resources casualties", k=12)
-    result = get_llm().invoke(
-        f"Generate a complete XVR operator scenario brief in English.\n\n"
-        f"SCENARIO BRIEF\n==============\n\n"
-        f"INCIDENT TITLE: [title from context]\n\n"
-        f"LOCATION & BUILDING:\n- Type: [type]\n- Floors: [number]\n\n"
-        f"INITIAL SITUATION T+00:00:\n- Fire: [location]\n- Casualties: [number]\n- Resources: [vehicles]\n\n"
-        f"COMPLICATIONS:\n- T+[time]: [complication 1]\n- T+[time]: [complication 2]\n- T+[time]: [complication 3]\n\n"
-        f"CRITICAL DECISIONS:\n1. [decision]\n2. [decision]\n\n"
-        f"LEARNING OBJECTIVES:\n- [objective 1]\n- [objective 2]\n\n"
-        f"DEBRIEFING QUESTIONS:\n1. [question based on actual mistakes]\n2. [question]\n3. [question]\n\n"
-        f"XVR OPERATOR NOTES:\n[key moments to inject]\n\n"
-        f"Base ONLY on context below.\n\nContext:\n{context}"
-    ).content.strip()
+    context = gather_context(TIMELINE_QUERIES + ["building type floors location", "resources vehicles crews dispatched"])
+    result = plain_text(get_llm().invoke(
+        "Write an XVR operator scenario brief in English, based ONLY on the incident described in the "
+        "transcript below. Plain text, no Markdown. Use exactly these section headings in capitals, each "
+        "followed by short lines starting with '- ' (or numbers for decisions and questions):\n"
+        "INCIDENT TITLE, LOCATION & BUILDING, INITIAL SITUATION T+00:00, COMPLICATIONS (with T+mm:ss), "
+        "CRITICAL DECISIONS, LEARNING OBJECTIVES, DEBRIEFING QUESTIONS, XVR OPERATOR NOTES.\n"
+        "If the transcript does not state something, write 'not stated' instead of inventing it.\n\n"
+        f"Transcript excerpts, in video order:\n{context}"
+    ).content.strip())
     STATE["xvr_content"] = result
     xvr_path = f'/tmp/xvr_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt'
     Path(xvr_path).write_text(result)
-    
+
     add_trace("xvr", "Rendered raw TXT export for XVR simulator manual", lat=time.time()-t0)
     return jsonify({"content": result, "trace": STATE["trace"]})
 

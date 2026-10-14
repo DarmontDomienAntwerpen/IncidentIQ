@@ -24,3 +24,14 @@ def test_clean_tx_removes_sound_annotations():
 
 def test_clean_tx_drops_empty_timestamps_and_collapses_whitespace():
     assert clean_tx("[00:01]  [00:02] water   supply") == "[00:02] water supply"
+
+
+def test_first_ts_reads_first_timestamp_and_sorts_unstamped_last():
+    from app import first_ts
+    assert first_ts("smoke [05:32] means [05:34]") == 332
+    assert first_ts("no timestamp") > first_ts("[59:59]")
+
+
+def test_plain_text_strips_markdown_emphasis_and_headers():
+    from app import plain_text
+    assert plain_text("**SCENARIO BRIEF**\n## Title\n- Fire: **5th** floor") == "SCENARIO BRIEF\nTitle\n- Fire: 5th floor"
