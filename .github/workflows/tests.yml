@@ -14,6 +14,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install flask flask-cors numpy python-dotenv pytest
+        run: pip install flask flask-cors numpy python-dotenv pydantic pytest
       - name: Run tests
         run: python -m pytest -q
