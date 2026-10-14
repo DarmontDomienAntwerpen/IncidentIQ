@@ -142,3 +142,8 @@ Completed bootcamp project, working end to end. Possible next steps: support for
 ## Author
 **Domien Darmont**, AI Engineer, Antwerp, Belgium
 GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)
+
+## License
+© 2026 Domien Darmont. All rights reserved.
+
+The source code of this project is published for viewing and evaluation only. No permission is granted to copy, modify, distribute or use it, in whole or in part, without prior written consent from the author.
