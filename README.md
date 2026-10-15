@@ -144,7 +144,7 @@ Completed bootcamp project, working end to end. Possible next steps: support for
 It runs as a local, single-user demo: one session at a time and no login, so it is not meant to be exposed on a network as is.
 
 ## Author
-**Domien Darmont**, AI Engineer, Antwerp, Belgium  
+**Domien Darmont** — Operational leader building applied AI systems, Antwerp, Belgium  
 GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)  
 LinkedIn: [Domien Darmont](https://www.linkedin.com/in/domien-darmont-b53b7640b/)
 
