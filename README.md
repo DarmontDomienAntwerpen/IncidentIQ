@@ -15,6 +15,8 @@
 
 ![IncidentIQ on a Brussels high-rise fire case study: the analytical timeline with key figures (left), a sourced answer in the chat and the generated XVR scenario brief (right)](docs/images/showcase.png)
 
+*Timestamps such as [06:19] refer to the position in the source video, not to the incident clock.*
+
 ---
 
 ## What it does
@@ -138,6 +140,8 @@ IncidentIQ/
 
 ## Status & next steps
 Completed bootcamp project, working end to end. Possible next steps: support for uploaded video and audio files (not only YouTube), and multilingual transcripts.
+
+It runs as a local, single-user demo: one session at a time and no login, so it is not meant to be exposed on a network as is.
 
 ## Author
 **Domien Darmont**, AI Engineer, Antwerp, Belgium  
