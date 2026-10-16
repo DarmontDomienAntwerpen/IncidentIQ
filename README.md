@@ -58,12 +58,14 @@ The agent rewrites each question into several search queries (multi-query retrie
 
 | Metric | Score |
 |---|---|
-| RAGAS Faithfulness | 0.795 |
-| RAGAS Context Recall | 0.750 |
-| RAGAS Answer Relevancy | 0.555 |
-| ROUGE-1 | 0.382 |
+| RAGAS Faithfulness | 0.831 |
+| RAGAS Context Recall | 0.611 |
+| RAGAS Answer Relevancy | 0.773 |
+| ROUGE-1 | 0.349 |
 
-The full evaluation is in [notebooks/05_evaluation.ipynb](notebooks/05_evaluation.ipynb).
+Faithfulness: the answer is supported by the retrieved context. Context recall: the retrieved context covers the reference answer. Answer relevancy: the answer addresses the question. ROUGE-1: word overlap with the reference answer.
+
+These numbers are the stored output of [notebooks/05_evaluation.ipynb](notebooks/05_evaluation.ipynb) (9 test questions), which holds the full evaluation.
 
 ## Tech stack
 
