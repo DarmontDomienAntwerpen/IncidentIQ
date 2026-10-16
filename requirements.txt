@@ -1,38 +1,38 @@
 # ── Core AI & LLM ──────────────────────────────────────────────────────────────
-openai>=1.0.0
-langchain>=0.3.0
-langchain-openai>=0.2.0
-langchain-pinecone>=0.2.0
-langchain-community>=0.3.0
-langchain-text-splitters>=0.3.0
-pydantic>=2.0
-langgraph>=0.2.0
+openai==3.31.0
+langchain==1.4.6
+langchain-openai==1.7.2
+langchain-pinecone==0.2.13
+langchain-community==0.4.2
+langchain-text-splitters==1.1.3
+pydantic==2.14.1
+langgraph==1.2.15
 
 # ── Vector Database ────────────────────────────────────────────────────────────
-pinecone>=5.0.0
+pinecone==7.3.0
 
 # ── Evaluation ────────────────────────────────────────────────────────────────
-ragas>=0.1.0
-rouge-score>=0.1.2
-nltk>=3.8.0
+ragas==0.3.1
+rouge-score==0.1.2
+nltk==3.10.3
 
 # ── YouTube ───────────────────────────────────────────────────────────────────
-youtube-transcript-api>=0.7.0
+youtube-transcript-api==1.2.4
 
 # ── PDF Generation ────────────────────────────────────────────────────────────
-reportlab>=4.0.0
+reportlab==5.0.1
 
 # ── Gmail ─────────────────────────────────────────────────────────────────────
-google-api-python-client>=2.0.0
-google-auth-oauthlib>=1.0.0
-google-auth-httplib2>=0.2.0
+google-api-python-client==2.201.0
+google-auth-oauthlib==1.5.0
+google-auth-httplib2==0.4.4
 
 # ── App UI ────────────────────────────────────────────────────────────────────
 Flask==3.0.3
 Flask-CORS==4.0.1
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
-python-dotenv>=1.0.0
+python-dotenv==1.2.4
 
 # ── Testing ───────────────────────────────────────────────────────────────────
-pytest>=8.0
+pytest==9.1.1
